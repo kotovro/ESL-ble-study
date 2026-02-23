@@ -75,7 +75,7 @@
 #define LEDBUTTON_LED                   BSP_BOARD_LED_2                         /**< LED to be toggled with the help of the LED Button Service. */
 #define LEDBUTTON_BUTTON                BSP_BUTTON_0                            /**< Button that will trigger the notification event with the LED Button Service */
 
-#define DEVICE_NAME                     "Konstantin_Voronetsky"                         /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "Konstatnit Voronetsky"                         /**< Name of device. Will be included in the advertising data. */
 
 #define APP_BLE_OBSERVER_PRIO           3                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
 #define APP_BLE_CONN_CFG_TAG            1                                       /**< A tag identifying the SoftDevice BLE configuration. */
@@ -102,6 +102,7 @@ BLE_LBS_DEF(m_lbs);                                                             
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);                                                         /**< Context for the Queued Write module.*/
 
+static int size;
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
 
 static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
@@ -212,20 +213,25 @@ static void advertising_init(void)
     ret_code_t    err_code;
     ble_advdata_t advdata;
     ble_advdata_t srdata;
+    ble_advdata_manuf_data_t manuf_specific_data;
+    manuf_specific_data.company_identifier = 0x0059; // Nordic Semiconductor's company ID.
+    uint8_t data[] = "Konstantin";
+    manuf_specific_data.data.p_data = data;
+    manuf_specific_data.data.size = sizeof(data) - 1;
 
-    ble_uuid_t adv_uuids[] = {{LBS_UUID_SERVICE, m_lbs.uuid_type}};
 
-    // Build and set advertising data.
     memset(&advdata, 0, sizeof(advdata));
 
-    advdata.name_type          = BLE_ADVDATA_FULL_NAME;
+    advdata.name_type          = BLE_ADVDATA_NO_NAME;
     advdata.include_appearance = true;
     advdata.flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-
+    advdata.p_manuf_specific_data = &manuf_specific_data;
+    
+    
 
     memset(&srdata, 0, sizeof(srdata));
-    srdata.uuids_complete.uuid_cnt = sizeof(adv_uuids) / sizeof(adv_uuids[0]);
-    srdata.uuids_complete.p_uuids  = adv_uuids;
+    srdata.name_type = BLE_ADVDATA_FULL_NAME;
+
 
     err_code = ble_advdata_encode(&advdata, m_adv_data.adv_data.p_data, &m_adv_data.adv_data.len);
     APP_ERROR_CHECK(err_code);
@@ -245,6 +251,7 @@ static void advertising_init(void)
     adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
     adv_params.interval        = APP_ADV_INTERVAL;
 
+    size = strlen((char *)m_enc_advdata); //+ strlen(m_enc_scan_response_data);
     err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_adv_data, &adv_params);
     APP_ERROR_CHECK(err_code);
 }
@@ -383,6 +390,11 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 {
     ret_code_t err_code;
 
+    for (int i=0;i < BLE_GAP_ADV_SET_DATA_SIZE_MAX;i++) {
+        NRF_LOG_INFO("%d \n", m_adv_data.adv_data.p_data[i]);
+    // printf("%lf\n",foo[i]);
+    }
+    NRF_LOG_INFO("adv data len: %d", m_adv_data.adv_data.len);
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
