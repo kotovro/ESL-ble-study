@@ -102,7 +102,6 @@ BLE_LBS_DEF(m_lbs);                                                             
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);                                                         /**< Context for the Queued Write module.*/
 
-static int size;
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
 
 static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
@@ -251,7 +250,6 @@ static void advertising_init(void)
     adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
     adv_params.interval        = APP_ADV_INTERVAL;
 
-    size = strlen((char *)m_enc_advdata); //+ strlen(m_enc_scan_response_data);
     err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_adv_data, &adv_params);
     APP_ERROR_CHECK(err_code);
 }
@@ -389,12 +387,6 @@ static void advertising_start(void)
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 {
     ret_code_t err_code;
-
-    for (int i=0;i < BLE_GAP_ADV_SET_DATA_SIZE_MAX;i++) {
-        NRF_LOG_INFO("%d \n", m_adv_data.adv_data.p_data[i]);
-    // printf("%lf\n",foo[i]);
-    }
-    NRF_LOG_INFO("adv data len: %d", m_adv_data.adv_data.len);
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
