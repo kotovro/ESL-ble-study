@@ -69,6 +69,7 @@
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
+#include "estc_service.h"
 
 #define ADVERTISING_LED                 BSP_BOARD_LED_0                         /**< Is on when device is advertising. */
 #define CONNECTED_LED                   BSP_BOARD_LED_1                         /**< Is on when device has connected. */
@@ -123,6 +124,14 @@ static ble_gap_adv_data_t m_adv_data =
 
     }
 };
+
+// static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
+// {
+//     {BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE},
+//     // TODO: 5. Add ESTC service UUID to the table
+// };
+
+ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
 /**@brief Function for assert macro callback.
  *
@@ -182,7 +191,6 @@ static void gap_params_init(void)
     APP_ERROR_CHECK(err_code);
 
     memset(&gap_conn_params, 0, sizeof(gap_conn_params));
-
     gap_conn_params.min_conn_interval = MIN_CONN_INTERVAL;
     gap_conn_params.max_conn_interval = MAX_CONN_INTERVAL;
     gap_conn_params.slave_latency     = SLAVE_LATENCY;
@@ -273,19 +281,19 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
  * @param[in] p_lbs     Instance of LED Button Service to which the write applies.
  * @param[in] led_state Written/desired state of the LED.
  */
-static void led_write_handler(uint16_t conn_handle, ble_lbs_t * p_lbs, uint8_t led_state)
-{
-    if (led_state)
-    {
-        bsp_board_led_on(LEDBUTTON_LED);
-        NRF_LOG_INFO("Received LED ON!");
-    }
-    else
-    {
-        bsp_board_led_off(LEDBUTTON_LED);
-        NRF_LOG_INFO("Received LED OFF!");
-    }
-}
+// static void led_write_handler(uint16_t conn_handle, ble_lbs_t * p_lbs, uint8_t led_state)
+// {
+//     if (led_state)
+//     {
+//         bsp_board_led_on(LEDBUTTON_LED);
+//         NRF_LOG_INFO("Received LED ON!");
+//     }
+//     else
+//     {
+//         bsp_board_led_off(LEDBUTTON_LED);
+//         NRF_LOG_INFO("Received LED OFF!");
+//     }
+// }
 
 
 /**@brief Function for initializing services that will be used by the application.
@@ -293,19 +301,27 @@ static void led_write_handler(uint16_t conn_handle, ble_lbs_t * p_lbs, uint8_t l
 static void services_init(void)
 {
     ret_code_t         err_code;
-    ble_lbs_init_t     init     = {0};
+    // ble_lbs_init_t     init     = {0};
     nrf_ble_qwr_init_t qwr_init = {0};
 
-    // Initialize Queued Write Module.
+    // // Initialize Queued Write Module.
+    // qwr_init.error_handler = nrf_qwr_error_handler;
+
+    // err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
+    // APP_ERROR_CHECK(err_code);
+
+    // // Initialize LBS.
+    // init.led_write_handler = led_write_handler;
+
+    // err_code = ble_lbs_init(&m_lbs, &init);
+    // APP_ERROR_CHECK(err_code);
+
     qwr_init.error_handler = nrf_qwr_error_handler;
 
     err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
     APP_ERROR_CHECK(err_code);
 
-    // Initialize LBS.
-    init.led_write_handler = led_write_handler;
-
-    err_code = ble_lbs_init(&m_lbs, &init);
+    err_code = estc_ble_service_init(&m_estc_service);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -565,9 +581,16 @@ static void idle_state_handle(void)
 	LOG_BACKEND_USB_PROCESS();
 }
 
+volatile bool m_can_continue = false;
 
+void continue_on_timeout_event(void* p_context)
+{
+    m_can_continue = true;
+}
 /**@brief Function for application main entry.
  */
+    
+APP_TIMER_DEF(timer_id);
 int main(void)
 {
     // Initialize.
@@ -576,6 +599,14 @@ int main(void)
     timers_init();
     buttons_init();
     power_management_init();
+
+    app_timer_create(&timer_id, APP_TIMER_MODE_SINGLE_SHOT, &continue_on_timeout_event);
+    app_timer_start(timer_id, APP_TIMER_TICKS(5000), NULL);
+    while (!m_can_continue) {
+        idle_state_handle();
+    }
+    
+
     ble_stack_init();
     gap_params_init();
     gatt_init();

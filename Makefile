@@ -74,7 +74,9 @@ SRC_FILES += \
   $(SDK_ROOT)/components/ble/common/ble_conn_params.c \
   $(SDK_ROOT)/components/ble/common/ble_advdata.c \
   $(SDK_ROOT)/components/ble/ble_services/ble_lbs/ble_lbs.c \
+  $(PROJ_DIR)/estc_service.c \
   $(PROJ_DIR)/main.c \
+  
 
 # Include folders common to all targets
 INC_FOLDERS += \
