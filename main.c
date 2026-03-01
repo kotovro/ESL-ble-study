@@ -125,11 +125,12 @@ static ble_gap_adv_data_t m_adv_data =
     }
 };
 
-// static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
-// {
-//     {BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE},
-//     // TODO: 5. Add ESTC service UUID to the table
-// };
+static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
+{
+    {BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE},
+    {ESTC_SERVICE_UUID, BLE_UUID_TYPE_BLE},
+};
+
 
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
@@ -220,25 +221,20 @@ static void advertising_init(void)
     ret_code_t    err_code;
     ble_advdata_t advdata;
     ble_advdata_t srdata;
-    ble_advdata_manuf_data_t manuf_specific_data;
-    manuf_specific_data.company_identifier = 0x0059; // Nordic Semiconductor's company ID.
-    uint8_t data[] = "Konstantin";
-    manuf_specific_data.data.p_data = data;
-    manuf_specific_data.data.size = sizeof(data) - 1;
 
-
+    
     memset(&advdata, 0, sizeof(advdata));
 
-    advdata.name_type          = BLE_ADVDATA_NO_NAME;
+    advdata.name_type          = BLE_ADVDATA_FULL_NAME;
     advdata.include_appearance = true;
     advdata.flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-    advdata.p_manuf_specific_data = &manuf_specific_data;
-    
-    
 
     memset(&srdata, 0, sizeof(srdata));
-    srdata.name_type = BLE_ADVDATA_FULL_NAME;
 
+    srdata.name_type = BLE_ADVDATA_NO_NAME;
+    srdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
+    srdata.uuids_complete.p_uuids  = m_adv_uuids;
+    
 
     err_code = ble_advdata_encode(&advdata, m_adv_data.adv_data.p_data, &m_adv_data.adv_data.len);
     APP_ERROR_CHECK(err_code);
@@ -301,7 +297,6 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
 static void services_init(void)
 {
     ret_code_t         err_code;
-    // ble_lbs_init_t     init     = {0};
     nrf_ble_qwr_init_t qwr_init = {0};
 
     // // Initialize Queued Write Module.
@@ -581,16 +576,8 @@ static void idle_state_handle(void)
 	LOG_BACKEND_USB_PROCESS();
 }
 
-volatile bool m_can_continue = false;
-
-void continue_on_timeout_event(void* p_context)
-{
-    m_can_continue = true;
-}
 /**@brief Function for application main entry.
  */
-    
-APP_TIMER_DEF(timer_id);
 int main(void)
 {
     // Initialize.
@@ -599,13 +586,6 @@ int main(void)
     timers_init();
     buttons_init();
     power_management_init();
-
-    app_timer_create(&timer_id, APP_TIMER_MODE_SINGLE_SHOT, &continue_on_timeout_event);
-    app_timer_start(timer_id, APP_TIMER_TICKS(5000), NULL);
-    while (!m_can_continue) {
-        idle_state_handle();
-    }
-    
 
     ble_stack_init();
     gap_params_init();
