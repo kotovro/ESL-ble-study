@@ -44,13 +44,12 @@
 // #define ESTC_SERVICE_UUID 0xabcd
 #define ESTC_SERVICE_UUID 0x230F
 
-// 539bdafa-7d94-46b1-affe-cbcb6475d75c
-#define ESTC_GATT_BASE_CHAR_1_UUID  { 0x5c, 0xd7, 0x75, 0x64, 0xcb, 0xcb, 0xfe, 0xaf, 0xb1, 0x46, 0x94, 0x7d, 0xfa, 0xda, 0x9b, 0x53 }
 #define ESTC_GATT_CHAR_1_UUID  0x5cd7
 
 
 typedef struct
 {
+    uint16_t type_handle;
     uint16_t service_handle;
     uint16_t connection_handle;
     ble_gatts_char_handles_t characteristic_handle;
