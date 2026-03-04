@@ -103,7 +103,7 @@ BLE_LBS_DEF(m_lbs);                                                             
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);                                                         /**< Context for the Queued Write module.*/
 
-static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
+// static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
 
 static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
 static uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];                    /**< Buffer for storing an encoded advertising set. */
@@ -338,7 +338,7 @@ static void on_conn_params_evt(ble_conn_params_evt_t * p_evt)
 
     if (p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED)
     {
-        err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
+        err_code = sd_ble_gap_disconnect(m_estc_service.connection_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
         APP_ERROR_CHECK(err_code);
     }
 }
@@ -404,8 +404,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             NRF_LOG_INFO("Connected");
             bsp_board_led_on(CONNECTED_LED);
             bsp_board_led_off(ADVERTISING_LED);
-            m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-            err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
+            m_estc_service.connection_handle = p_ble_evt->evt.gap_evt.conn_handle;
+            err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_estc_service.connection_handle);
             APP_ERROR_CHECK(err_code);
             err_code = app_button_enable();
             APP_ERROR_CHECK(err_code);
@@ -414,15 +414,29 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected");
             bsp_board_led_off(CONNECTED_LED);
-            m_conn_handle = BLE_CONN_HANDLE_INVALID;
+            m_estc_service.connection_handle = BLE_CONN_HANDLE_INVALID;
             err_code = app_button_disable();
             APP_ERROR_CHECK(err_code);
             advertising_start();
             break;
 
+        case BLE_GATTS_EVT_WRITE:
+        {
+            const ble_gatts_evt_write_t * write = &p_ble_evt->evt.gatts_evt.params.write;
+
+            if (write->handle == m_estc_service.characteristic_handle.value_handle)
+            {
+                estc_update_characteristic_1_value(&m_estc_service, (int32_t *)write->data); 
+            }
+            // if (write->handle == service->characteristic_handle.cccd_handle)
+            // {
+            //     // notifications enabled/disabled
+            // }
+        }
+        break;
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
             // Pairing not supported
-            err_code = sd_ble_gap_sec_params_reply(m_conn_handle,
+            err_code = sd_ble_gap_sec_params_reply(m_estc_service.connection_handle,
                                                    BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP,
                                                    NULL,
                                                    NULL);
@@ -443,7 +457,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 
         case BLE_GATTS_EVT_SYS_ATTR_MISSING:
             // No system attributes have been stored.
-            err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
+            err_code = sd_ble_gatts_sys_attr_set(m_estc_service.connection_handle, NULL, 0, 0);
             APP_ERROR_CHECK(err_code);
             break;
 
@@ -501,47 +515,47 @@ static void ble_stack_init(void)
  * @param[in] pin_no        The pin that the event applies to.
  * @param[in] button_action The button action (press/release).
  */
-static void button_event_handler(uint8_t pin_no, uint8_t button_action)
-{
-    ret_code_t err_code;
+// static void button_event_handler(uint8_t pin_no, uint8_t button_action)
+// {
+//     ret_code_t err_code;
 
-    switch (pin_no)
-    {
-        case LEDBUTTON_BUTTON:
-            NRF_LOG_INFO("Send button state change.");
-            err_code = ble_lbs_on_button_change(m_conn_handle, &m_lbs, button_action);
-            if (err_code != NRF_SUCCESS &&
-                err_code != BLE_ERROR_INVALID_CONN_HANDLE &&
-                err_code != NRF_ERROR_INVALID_STATE &&
-                err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)
-            {
-                APP_ERROR_CHECK(err_code);
-            }
-            break;
+//     switch (pin_no)
+//     {
+//         case LEDBUTTON_BUTTON:
+//             NRF_LOG_INFO("Send button state change.");
+//             err_code = ble_lbs_on_button_change(m_conn_handle, &m_lbs, button_action);
+//             if (err_code != NRF_SUCCESS &&
+//                 err_code != BLE_ERROR_INVALID_CONN_HANDLE &&
+//                 err_code != NRF_ERROR_INVALID_STATE &&
+//                 err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)
+//             {
+//                 APP_ERROR_CHECK(err_code);
+//             }
+//             break;
 
-        default:
-            APP_ERROR_HANDLER(pin_no);
-            break;
-    }
-}
+//         default:
+//             APP_ERROR_HANDLER(pin_no);
+//             break;
+//     }
+// }
 
 
 /**@brief Function for initializing the button handler module.
- */
-static void buttons_init(void)
-{
-    ret_code_t err_code;
+//  */
+// static void buttons_init(void)
+// {
+//     ret_code_t err_code;
 
-    //The array must be static because a pointer to it will be saved in the button handler module.
-    static app_button_cfg_t buttons[] =
-    {
-        {LEDBUTTON_BUTTON, false, BUTTON_PULL, button_event_handler}
-    };
+//     //The array must be static because a pointer to it will be saved in the button handler module.
+//     static app_button_cfg_t buttons[] =
+//     {
+//         {LEDBUTTON_BUTTON, false, BUTTON_PULL, button_event_handler}
+//     };
 
-    err_code = app_button_init(buttons, ARRAY_SIZE(buttons),
-                               BUTTON_DETECTION_DELAY);
-    APP_ERROR_CHECK(err_code);
-}
+//     err_code = app_button_init(buttons, ARRAY_SIZE(buttons),
+//                                BUTTON_DETECTION_DELAY);
+//     APP_ERROR_CHECK(err_code);
+// }
 
 
 static void log_init(void)
@@ -584,7 +598,7 @@ int main(void)
     log_init();
     leds_init();
     timers_init();
-    buttons_init();
+    // buttons_init();
     power_management_init();
 
     ble_stack_init();
@@ -596,6 +610,7 @@ int main(void)
 
     // Start execution.
     NRF_LOG_INFO("Blinky example started.");
+
     advertising_start();
 
     // Enter main loop.
