@@ -43,23 +43,29 @@
  * This file contains the source code for a sample server application using the LED Button service.
  */
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+
 #include "nordic_common.h"
 #include "nrf.h"
 #include "app_error.h"
 #include "ble.h"
-#include "ble_err.h"
 #include "ble_hci.h"
 #include "ble_srv_common.h"
 #include "ble_advdata.h"
+#include "ble_advertising.h"
 #include "ble_conn_params.h"
 #include "nrf_sdh.h"
+#include "nrf_sdh_soc.h"
 #include "nrf_sdh_ble.h"
-#include "boards.h"
 #include "app_timer.h"
-#include "app_button.h"
-#include "ble_lbs.h"
+#include "fds.h"
+#include "peer_manager.h"
+#include "peer_manager_handler.h"
+#include "bsp_btn_ble.h"
+#include "sensorsim.h"
+#include "ble_conn_state.h"
 #include "nrf_ble_gatt.h"
 #include "nrf_ble_qwr.h"
 #include "nrf_pwr_mgmt.h"
@@ -99,31 +105,31 @@
 #define DEAD_BEEF                       0xDEADBEEF                              /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 
-BLE_LBS_DEF(m_lbs);                                                             /**< LED Button Service instance. */
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
-NRF_BLE_QWR_DEF(m_qwr);                                                         /**< Context for the Queued Write module.*/
+NRF_BLE_QWR_DEF(m_qwr);         
+BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
 
 // static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
 
-static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
-static uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];                    /**< Buffer for storing an encoded advertising set. */
-static uint8_t m_enc_scan_response_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];         /**< Buffer for storing an encoded scan data. */
+// static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
+// static uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];                    /**< Buffer for storing an encoded advertising set. */
+// static uint8_t m_enc_scan_response_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];         /**< Buffer for storing an encoded scan data. */
 
-/**@brief Struct that contains pointers to the encoded advertising data. */
-static ble_gap_adv_data_t m_adv_data =
-{
-    .adv_data =
-    {
-        .p_data = m_enc_advdata,
-        .len    = BLE_GAP_ADV_SET_DATA_SIZE_MAX
-    },
-    .scan_rsp_data =
-    {
-        .p_data = m_enc_scan_response_data,
-        .len    = BLE_GAP_ADV_SET_DATA_SIZE_MAX
+// /**@brief Struct that contains pointers to the encoded advertising data. */
+// static ble_gap_adv_data_t m_adv_data =
+// {
+//     .adv_data =
+//     {
+//         .p_data = m_enc_advdata,
+//         .len    = BLE_GAP_ADV_SET_DATA_SIZE_MAX
+//     },
+//     .scan_rsp_data =
+//     {
+//         .p_data = m_enc_scan_response_data,
+//         .len    = BLE_GAP_ADV_SET_DATA_SIZE_MAX
 
-    }
-};
+//     }
+// };
 
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
 {
@@ -210,6 +216,54 @@ static void gatt_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+/**@brief Function for putting the chip into sleep mode.
+ *
+ * @note This function will not return.
+ */
+static void sleep_mode_enter(void)
+{
+    ret_code_t err_code;
+
+    err_code = bsp_indication_set(BSP_INDICATE_IDLE);
+    APP_ERROR_CHECK(err_code);
+
+    // Prepare wakeup buttons.
+    err_code = bsp_btn_ble_sleep_mode_prepare();
+    APP_ERROR_CHECK(err_code);
+
+    // Go to system-off mode (this function will not return; wakeup will cause a reset).
+    err_code = sd_power_system_off();
+    APP_ERROR_CHECK(err_code);
+}
+
+
+/**@brief Function for handling advertising events.
+ *
+ * @details This function will be called for advertising events which are passed to the application.
+ *
+ * @param[in] ble_adv_evt  Advertising event.
+ */
+static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
+{
+    ret_code_t err_code;
+
+    switch (ble_adv_evt)
+    {
+        case BLE_ADV_EVT_FAST:
+            NRF_LOG_INFO("ADV Event: Start fast advertising");
+            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
+            APP_ERROR_CHECK(err_code);
+            break;
+
+        case BLE_ADV_EVT_IDLE:
+            NRF_LOG_INFO("ADV Event: idle, no connectable advertising is ongoing");
+            sleep_mode_enter();
+            break;
+
+        default:
+            break;
+    }
+}
 
 /**@brief Function for initializing the Advertising functionality.
  *
@@ -218,44 +272,28 @@ static void gatt_init(void)
  */
 static void advertising_init(void)
 {
-    ret_code_t    err_code;
-    ble_advdata_t advdata;
-    ble_advdata_t srdata;
+    ret_code_t             err_code;
+    ble_advertising_init_t init;
 
-    
-    memset(&advdata, 0, sizeof(advdata));
+    memset(&init, 0, sizeof(init));
 
-    advdata.name_type          = BLE_ADVDATA_FULL_NAME;
-    advdata.include_appearance = true;
-    advdata.flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+    init.advdata.name_type               = BLE_ADVDATA_NO_NAME;
+    init.advdata.flags                   = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
 
-    memset(&srdata, 0, sizeof(srdata));
+    // TODO: 8. Consider moving the device characteristics to the Scan Response if necessary
+    init.advdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
+    init.advdata.uuids_complete.p_uuids  = m_adv_uuids;
 
-    srdata.name_type = BLE_ADVDATA_NO_NAME;
-    srdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
-    srdata.uuids_complete.p_uuids  = m_adv_uuids;
-    
+    init.config.ble_adv_fast_enabled  = true;
+    init.config.ble_adv_fast_interval = APP_ADV_INTERVAL;
+    init.config.ble_adv_fast_timeout  = APP_ADV_DURATION;
 
-    err_code = ble_advdata_encode(&advdata, m_adv_data.adv_data.p_data, &m_adv_data.adv_data.len);
+    init.evt_handler = on_adv_evt;
+
+    err_code = ble_advertising_init(&m_advertising, &init);
     APP_ERROR_CHECK(err_code);
 
-    err_code = ble_advdata_encode(&srdata, m_adv_data.scan_rsp_data.p_data, &m_adv_data.scan_rsp_data.len);
-    APP_ERROR_CHECK(err_code);
-
-    ble_gap_adv_params_t adv_params;
-
-    // Set advertising parameters.
-    memset(&adv_params, 0, sizeof(adv_params));
-
-    adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
-    adv_params.duration        = APP_ADV_DURATION;
-    adv_params.properties.type = BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
-    adv_params.p_peer_addr     = NULL;
-    adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
-    adv_params.interval        = APP_ADV_INTERVAL;
-
-    err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_adv_data, &adv_params);
-    APP_ERROR_CHECK(err_code);
+    ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
 }
 
 
@@ -272,25 +310,6 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
 }
 
 
-/**@brief Function for handling write events to the LED characteristic.
- *
- * @param[in] p_lbs     Instance of LED Button Service to which the write applies.
- * @param[in] led_state Written/desired state of the LED.
- */
-// static void led_write_handler(uint16_t conn_handle, ble_lbs_t * p_lbs, uint8_t led_state)
-// {
-//     if (led_state)
-//     {
-//         bsp_board_led_on(LEDBUTTON_LED);
-//         NRF_LOG_INFO("Received LED ON!");
-//     }
-//     else
-//     {
-//         bsp_board_led_off(LEDBUTTON_LED);
-//         NRF_LOG_INFO("Received LED OFF!");
-//     }
-// }
-
 
 /**@brief Function for initializing services that will be used by the application.
  */
@@ -300,16 +319,6 @@ static void services_init(void)
     nrf_ble_qwr_init_t qwr_init = {0};
 
     // // Initialize Queued Write Module.
-    // qwr_init.error_handler = nrf_qwr_error_handler;
-
-    // err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
-    // APP_ERROR_CHECK(err_code);
-
-    // // Initialize LBS.
-    // init.led_write_handler = led_write_handler;
-
-    // err_code = ble_lbs_init(&m_lbs, &init);
-    // APP_ERROR_CHECK(err_code);
 
     qwr_init.error_handler = nrf_qwr_error_handler;
 
@@ -383,7 +392,8 @@ static void advertising_start(void)
 {
     ret_code_t           err_code;
 
-    err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
+    err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
+    // err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG); - low-level call of gap
     APP_ERROR_CHECK(err_code);
 
     bsp_board_led_on(ADVERTISING_LED);
