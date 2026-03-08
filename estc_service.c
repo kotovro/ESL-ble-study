@@ -37,6 +37,8 @@
 #include "ble_gatts.h"
 #include "ble_srv_common.h"
 
+static uint8_t m_ram_local_buffer[20];
+
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service);
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service)
@@ -82,7 +84,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     // Configures attribute metadata. For now we only specify that the attribute will be stored in the softdevice
     
     ble_gatts_attr_md_t attr_md = { 0 };
-    attr_md.vloc = BLE_GATTS_VLOC_STACK;
+    attr_md.vloc = BLE_GATTS_VLOC_USER;
 
     
     // TODO: 6.6. Set read/write security levels to our attribute metadata using `BLE_GAP_CONN_SEC_MODE_SET_OPEN`
@@ -90,16 +92,20 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
 
     // TODO: 6.2. Configure the characteristic value attribute (set the UUID and metadata)
+    
     ble_gatts_attr_t attr_char_value = { 0 };
     attr_char_value.p_uuid = &characteristic_uuid;
     attr_char_value.p_attr_md = &attr_md;
 
-    static uint8_t initial_value = 100;
+    uint8_t local_buffer[20] = {0xAA, 0xBB, 0xCC}; // Initial value of the characteristic
+
+    // static uint8_t initial_value = 100;
     attr_md.vlen = 1;
-    attr_char_value.init_len  = sizeof(initial_value); 
+    attr_char_value.init_len  = sizeof(local_buffer); 
     attr_char_value.init_offs = 0;
-    attr_char_value.max_len   = sizeof(initial_value);
-    attr_char_value.p_value   = &initial_value;
+    attr_char_value.max_len   = sizeof(local_buffer);
+    attr_char_value.p_value   = m_ram_local_buffer; 
+    memcpy(attr_char_value.p_value, local_buffer, sizeof(local_buffer));
     // TODO: 6.7. Set characteristic length in number of bytes in attr_char_value structure
     
     attr_char_value.max_len = BLE_GATTS_FIX_ATTR_LEN_MAX;

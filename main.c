@@ -283,10 +283,14 @@ static void advertising_init(void)
     // TODO: 8. Consider moving the device characteristics to the Scan Response if necessary
     init.advdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
     init.advdata.uuids_complete.p_uuids  = m_adv_uuids;
+    
+    init.srdata.name_type               = BLE_ADVDATA_FULL_NAME;
 
     init.config.ble_adv_fast_enabled  = true;
     init.config.ble_adv_fast_interval = APP_ADV_INTERVAL;
     init.config.ble_adv_fast_timeout  = APP_ADV_DURATION;
+    
+
 
     init.evt_handler = on_adv_evt;
 
