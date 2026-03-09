@@ -104,7 +104,6 @@
 
 #define DEAD_BEEF                       0xDEADBEEF                              /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
-
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);         
 BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
@@ -140,6 +139,8 @@ static ble_uuid_t m_adv_uuids[] =                                               
 
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
+static bool m_indication_enabled = false;
+static bool m_notification_enabled = false;
 /**@brief Function for assert macro callback.
  *
  * @details This function will be called in case of an assert in the SoftDevice.
@@ -283,7 +284,7 @@ static void advertising_init(void)
     // TODO: 8. Consider moving the device characteristics to the Scan Response if necessary
     init.advdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
     init.advdata.uuids_complete.p_uuids  = m_adv_uuids;
-    
+
     init.srdata.name_type               = BLE_ADVDATA_FULL_NAME;
 
     init.config.ble_adv_fast_enabled  = true;
@@ -313,6 +314,21 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
     APP_ERROR_HANDLER(nrf_error);
 }
 
+
+uint32_t send_notitification(uint16_t conn_handle, const uint8_t *data) 
+{
+    ble_gatts_hvx_params_t hvx_params = {0};
+    uint16_t len = sizeof(data);
+
+    memset(&hvx_params, 0, sizeof(hvx_params));
+    hvx_params.handle = m_estc_service.characteristic_handle.value_handle;
+    hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
+    hvx_params.p_len  = &len;
+    hvx_params.p_data = data;
+    
+    uint32_t err = sd_ble_gatts_hvx(conn_handle, &hvx_params);
+    return err;
+}
 
 
 /**@brief Function for initializing services that will be used by the application.
@@ -436,16 +452,24 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 
         case BLE_GATTS_EVT_WRITE:
         {
-            const ble_gatts_evt_write_t * write = &p_ble_evt->evt.gatts_evt.params.write;
+            const ble_gatts_evt_write_t *write = &p_ble_evt->evt.gatts_evt.params.write;
 
             if (write->handle == m_estc_service.characteristic_handle.value_handle)
             {
                 estc_update_characteristic_1_value(&m_estc_service, (int32_t *)write->data); 
+                if (m_notification_enabled)
+                {
+                    err_code = send_notitification(m_estc_service.connection_handle, write->data);
+                    APP_ERROR_CHECK(err_code);
+                }
             }
-            // if (write->handle == service->characteristic_handle.cccd_handle)
-            // {
-            //     // notifications enabled/disabled
-            // }
+            else if (write->handle == m_estc_service.characteristic_handle.cccd_handle)
+            {
+                const uint8_t *cccd = p_ble_evt->evt.gatts_evt.params.write.data;
+                
+                m_notification_enabled = (cccd[0] & BLE_GATT_HVX_NOTIFICATION) != 0;
+                m_indication_enabled   = (cccd[0] & BLE_GATT_HVX_INDICATION) != 0;
+            }
         }
         break;
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
@@ -490,7 +514,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                                              BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
             APP_ERROR_CHECK(err_code);
             break;
-
+        
         default:
             // No implementation needed.
             break;

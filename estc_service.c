@@ -80,9 +80,19 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     ble_gatts_char_md_t char_md = { 0 };
     char_md.char_props.read = 1;
     char_md.char_props.write = 1;
+    char_md.char_props.notify = 1;  // Enable notifications
+    char_md.char_props.indicate = 0; // Enable indications (optional, use one or both)
 
     // Configures attribute metadata. For now we only specify that the attribute will be stored in the softdevice
     
+    ble_gatts_attr_md_t cccd_md = {0};
+    // Allow client to READ and WRITE the CCCD (required for subscription)
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+
+    cccd_md.vloc = BLE_GATTS_VLOC_STACK; // Let SoftDevice store CCCD value internally
+    char_md.p_cccd_md = &cccd_md;        // Link CCCD metadata to characteristic
+
     ble_gatts_attr_md_t attr_md = { 0 };
     attr_md.vloc = BLE_GATTS_VLOC_USER;
 
@@ -130,12 +140,12 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 
 void estc_update_characteristic_1_value(ble_estc_service_t *service, int32_t *value)
 {
-    // ble_gatts_value_t gatts_value = {0};
-    // gatts_value.len = sizeof(int32_t);
-    // gatts_value.offset = 0;
-    // gatts_value.p_value = (uint8_t *)value;
+    ble_gatts_value_t gatts_value = {0};
+    gatts_value.len = sizeof(int32_t);
+    gatts_value.offset = 0;
+    gatts_value.p_value = (uint8_t *)value;
 
-    // ret_code_t error_code = sd_ble_gatts_value_set(service->connection_handle, service->characteristic_handle.value_handle, &gatts_value);
-    APP_ERROR_CHECK(NRF_SUCCESS);
+    ret_code_t error_code = sd_ble_gatts_value_set(service->connection_handle, service->characteristic_handle.value_handle, &gatts_value);
+    APP_ERROR_CHECK(error_code);
 }
 
