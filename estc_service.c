@@ -40,6 +40,7 @@
 static uint8_t m_ram_local_buffer[20];
 
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service);
+static ret_code_t estc_ble_add_characteristic(ble_estc_service_t *service);
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service)
 {
@@ -67,6 +68,14 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service)
 }
 
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
+{
+    ret_code_t error_code = NRF_SUCCESS;
+    error_code = estc_ble_add_characteristic(service);
+    APP_ERROR_CHECK(error_code);
+    return error_code;
+}
+
+static ret_code_t estc_ble_add_characteristic(ble_estc_service_t *service)
 {
     ret_code_t error_code = NRF_SUCCESS;
 
