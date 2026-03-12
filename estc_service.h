@@ -55,7 +55,7 @@ typedef struct
     uint16_t type_handle;
     uint16_t service_handle;
     uint16_t connection_handle;
-    ble_gatts_char_handles_t characteristic_handle;
+    ble_gatts_char_handles_t characteristic_with_notification_handle;
     ble_gatts_char_handles_t characteristic_timer_dependent_handle;
     ble_gatts_char_handles_t another_characteristic_handle;
 } ble_estc_service_t;
@@ -65,5 +65,7 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service);
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
 
 void estc_update_characteristic_1_value(ble_estc_service_t *service, int32_t *value);
+
+void estc_update_timer_dependent_characteristic_value(ble_estc_service_t *service, uint32_t *value); 
 
 #endif /* ESTC_SERVICE_H__ */
