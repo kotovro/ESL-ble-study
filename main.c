@@ -206,13 +206,18 @@ uint32_t send_indication(uint16_t conn_handle, const uint8_t *data)
 }
 
 
-
+/**@brief Function for the Timer callback.
+ *
+ * @details Increments the indication variable and sends indication with the new value. This function will be called each time the timer expires.
+ */
 void estc_indicate_update_on_timer(void *service)
 {
+      ++variable_changed_on_indication; //write this vlaue and send via hvx
     // ble_estc_service_t *service_casted = (ble_estc_service_t *)service;
     // send_indication(service, m_estc_service->connection_handle);
-    ++variable_changed_on_indication; //write this vlaue and send via svx
-    NRF_LOG_INFO("%s:%d | Sent indication with value: %d", __FUNCTION__, __LINE__, variable_changed_on_indication);
+    /// point 
+    
+    // NRF_LOG_INFO("%s:%d | Sent indication with value: %d", __FUNCTION__, __LINE__, variable_changed_on_indication);
 }
 
 // void estc_notify_update_on_timer(ble_estc_service_t *service, int32_t *value)
@@ -510,16 +515,17 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             else if (write->handle == m_estc_service.characteristic_with_notification_handle.cccd_handle)
             {
                 const uint8_t *cccd = p_ble_evt->evt.gatts_evt.params.write.data;
-                m_notification_enabled = (cccd[0] & BLE_GATT_HVX_NOTIFICATION) != 0;
+                m_notification_enabled = ble_srv_is_notification_enabled(cccd);
             }
             else if (write->handle == m_estc_service.characteristic_timer_dependent_handle.cccd_handle)
             {
                 const uint8_t *cccd = p_ble_evt->evt.gatts_evt.params.write.data;
-                m_indication_enabled = (cccd[0] & BLE_GATT_HVX_INDICATION) != 0;
+                m_indication_enabled = ble_srv_is_indication_enabled(cccd);
                 if (m_indication_enabled)
                 {
                     estc_update_timer_dependent_characteristic_value(&m_estc_service, &variable_changed_on_indication);
                     err_code = send_indication(m_estc_service.connection_handle, (uint8_t *)&variable_changed_on_indication);
+                    NRF_LOG_INFO("BLE error: %d", err_code);
                     APP_ERROR_CHECK(err_code);
                 }
                 else
