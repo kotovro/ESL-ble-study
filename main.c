@@ -113,7 +113,7 @@ NRF_BLE_GATT_DEF(m_gatt);                                                       
 NRF_BLE_QWR_DEF(m_qwr);         
 BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
 
-// static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
+//  static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
 
 // static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
 // static uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];                    /**< Buffer for storing an encoded advertising set. */
@@ -136,7 +136,7 @@ BLE_ADVERTISING_DEF(m_advertising);                                             
 // };
 
 /// simplest option is to increment this value anf then write it
-static uint32_t variable_changed_on_indication = 0;
+static uint8_t variable_changed_on_indication = 0;
 
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
 {
@@ -215,24 +215,42 @@ uint32_t send_indication(uint16_t conn_handle, const uint8_t *data)
  */
 void estc_indicate_update_on_timer(void *context)
 {
+    variable_changed_on_indication++;    
+    // estc_update_timer_dependent_characteristic_value(
+    //     &m_estc_service,
+    //     &variable_changed_on_indication);
+
+    NRF_LOG_INFO("Current value: %d", variable_changed_on_indication);
+
     if (!m_indication_enabled || m_indication_pending)
-    return;
-
-    variable_changed_on_indication++;
-
+        return;
+    NRF_LOG_INFO("Will try to indicate value: %d", variable_changed_on_indication);
     estc_update_timer_dependent_characteristic_value(
         &m_estc_service,
         &variable_changed_on_indication);
-
+    NRF_LOG_INFO("Will try to indicate value: %d", variable_changed_on_indication);
+    if (m_estc_service.connection_handle == BLE_CONN_HANDLE_INVALID) {
+        NRF_LOG_INFO("No connection, cannot send indication");
+        return;
+    }
     ret_code_t err = send_indication(
         m_estc_service.connection_handle,
-        (uint8_t *)&variable_changed_on_indication);
-    NRF_LOG_INFO("HVX err = %d", err);
-    if (err == NRF_SUCCESS)
-        m_indication_pending = true;
-    else
-       m_indication_pending = false;
+        &variable_changed_on_indication);
 
+    if (err != NRF_SUCCESS)
+    {
+        // HVX accepted by SoftDevice — wait for BLE_GATTS_EVT_HVC
+        m_indication_pending = true;
+    }
+    else if (err == NRF_ERROR_BUSY)
+    {
+        // HVX is busy, skip sending this tick
+        NRF_LOG_INFO("SoftDevice busy, will try next timer tick");
+    }
+    else
+    {
+        NRF_LOG_WARNING("Unexpected HVX error: %d", err);
+    }
 }
 
 static uint8_t notification_value = 0; 
@@ -540,7 +558,13 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GATTS_EVT_WRITE:
         {
             const ble_gatts_evt_write_t *write = &p_ble_evt->evt.gatts_evt.params.write;
-
+            
+            NRF_LOG_INFO("Received write event, handle: %d", write->handle);
+            NRF_LOG_INFO("CCCD of a char with notification: %d",  m_estc_service.characteristic_with_notification_handle.cccd_handle);
+            NRF_LOG_INFO("CCCD of a char with indication: %d",  m_estc_service.characteristic_timer_dependent_handle.cccd_handle);
+            NRF_LOG_INFO("Value handle of a char witj notification enabled: %d",  m_estc_service.characteristic_with_notification_handle.value_handle);
+            
+            // NRF_LOG_INFO("Received write event, data: %d", m_estc_service.characteristic_timer_dependent_handle.cccd_handle);
             if (write->handle == m_estc_service.characteristic_with_notification_handle.value_handle)
             {
                 estc_update_characteristic_1_value(&m_estc_service, (int32_t *)write->data); 
@@ -557,18 +581,22 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             }
             else if (write->handle == m_estc_service.characteristic_timer_dependent_handle.cccd_handle)
             {
+                NRF_LOG_INFO("Received write to CCCD of timer dependent characteristic");
                 const uint8_t *cccd = p_ble_evt->evt.gatts_evt.params.write.data;
+                NRF_LOG_INFO("Acquired cccd handle: %d", m_estc_service.characteristic_timer_dependent_handle.cccd_handle);
                 m_indication_enabled = ble_srv_is_indication_enabled(cccd);
+                NRF_LOG_INFO("Enabled indications, will try to indicate value: %d", m_indication_enabled);
+                
             }
         }
         break;
 
         case BLE_GATTS_EVT_HVC:
-            m_indication_pending = false;
+                m_indication_pending = false;
             break;
-        case BLE_GATTS_EVT_HVN_TX_COMPLETE:
-            m_indication_pending = false;
-            break;
+        // case BLE_GATTS_EVT_HVN_TX_COMPLETE:
+        //     m_indication_pending = false;
+        //     break;
         
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
             // Pairing not supported
@@ -614,6 +642,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             break;
         
         default:
+            NRF_LOG_INFO("Unhandled BLE event: 0x%04x", p_ble_evt->header.evt_id);
             // No implementation needed.
             break;
     }

@@ -66,6 +66,6 @@ void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
 
 void estc_update_characteristic_1_value(ble_estc_service_t *service, int32_t *value);
 
-void estc_update_timer_dependent_characteristic_value(ble_estc_service_t *service, uint32_t *value); 
+void estc_update_timer_dependent_characteristic_value(ble_estc_service_t *service, uint8_t *value); 
 
 #endif /* ESTC_SERVICE_H__ */
