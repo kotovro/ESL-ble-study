@@ -104,9 +104,11 @@
 
 #define DEAD_BEEF                       0xDEADBEEF                              /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
-#define INDICATION_FREQUENCY_MS    50
+#define INDICATION_FREQUENCY_MS    500
+#define NOTIFICATION_FREQUENCY_MS    1000
+
 APP_TIMER_DEF(m_indication_timer_id);
-// APP_TIMER_DEF(m_notification_timer_id);                                                          
+APP_TIMER_DEF(m_notification_timer_id);                                                          
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);         
 BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
@@ -147,6 +149,7 @@ ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
 static bool m_indication_enabled = false;
 static bool m_notification_enabled = false;
+static bool m_indication_pending = false;
 /**@brief Function for assert macro callback.
  *
  * @details This function will be called in case of an assert in the SoftDevice.
@@ -210,14 +213,43 @@ uint32_t send_indication(uint16_t conn_handle, const uint8_t *data)
  *
  * @details Increments the indication variable and sends indication with the new value. This function will be called each time the timer expires.
  */
-void estc_indicate_update_on_timer(void *service)
+void estc_indicate_update_on_timer(void *context)
 {
-      ++variable_changed_on_indication; //write this vlaue and send via hvx
-    // ble_estc_service_t *service_casted = (ble_estc_service_t *)service;
-    // send_indication(service, m_estc_service->connection_handle);
-    /// point 
-    
-    // NRF_LOG_INFO("%s:%d | Sent indication with value: %d", __FUNCTION__, __LINE__, variable_changed_on_indication);
+    if (!m_indication_enabled || m_indication_pending)
+    return;
+
+    variable_changed_on_indication++;
+
+    estc_update_timer_dependent_characteristic_value(
+        &m_estc_service,
+        &variable_changed_on_indication);
+
+    ret_code_t err = send_indication(
+        m_estc_service.connection_handle,
+        (uint8_t *)&variable_changed_on_indication);
+    NRF_LOG_INFO("HVX err = %d", err);
+    if (err == NRF_SUCCESS)
+        m_indication_pending = true;
+    else
+       m_indication_pending = false;
+
+}
+
+static uint8_t notification_value = 0; 
+void estc_notify_update_on_timer(void *context)
+{
+    notification_value++;
+    estc_update_characteristic_1_value(
+        &m_estc_service,
+        (int32_t *)&notification_value);
+
+    if (!m_notification_enabled)
+        return;
+
+    ret_code_t err = send_notitification(
+        m_estc_service.connection_handle,
+        (uint8_t *)&notification_value);
+    NRF_LOG_INFO("HVX err = %d", err);
 }
 
 // void estc_notify_update_on_timer(ble_estc_service_t *service, int32_t *value)
@@ -238,7 +270,9 @@ static void timers_init(void)
     APP_ERROR_CHECK(err_code);
     err_code = app_timer_create(&m_indication_timer_id, APP_TIMER_MODE_REPEATED, estc_indicate_update_on_timer);
     APP_ERROR_CHECK(err_code);
-    app_timer_start(m_indication_timer_id, APP_TIMER_TICKS(INDICATION_FREQUENCY_MS), NULL);
+
+    err_code = app_timer_create(&m_notification_timer_id, APP_TIMER_MODE_REPEATED, estc_notify_update_on_timer);
+    APP_ERROR_CHECK(err_code);
 }
 
 
@@ -486,6 +520,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             APP_ERROR_CHECK(err_code);
             err_code = app_button_enable();
             APP_ERROR_CHECK(err_code);
+            app_timer_start(m_notification_timer_id, APP_TIMER_TICKS(NOTIFICATION_FREQUENCY_MS), NULL);
+            app_timer_start(m_indication_timer_id, APP_TIMER_TICKS(INDICATION_FREQUENCY_MS), NULL);   
+
             break;
 
         case BLE_GAP_EVT_DISCONNECTED:
@@ -494,6 +531,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             m_estc_service.connection_handle = BLE_CONN_HANDLE_INVALID;
             err_code = app_button_disable();
             APP_ERROR_CHECK(err_code);
+            app_timer_stop(m_notification_timer_id);
             app_timer_stop(m_indication_timer_id);
             advertising_start();
             
@@ -521,21 +559,17 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             {
                 const uint8_t *cccd = p_ble_evt->evt.gatts_evt.params.write.data;
                 m_indication_enabled = ble_srv_is_indication_enabled(cccd);
-                if (m_indication_enabled)
-                {
-                    estc_update_timer_dependent_characteristic_value(&m_estc_service, &variable_changed_on_indication);
-                    err_code = send_indication(m_estc_service.connection_handle, (uint8_t *)&variable_changed_on_indication);
-                    NRF_LOG_INFO("BLE error: %d", err_code);
-                    APP_ERROR_CHECK(err_code);
-                }
-                else
-                {
-                    // err_code = app_timer_stop(m_indication_timer_id);
-                    // APP_ERROR_CHECK(err_code);
-                }
             }
         }
         break;
+
+        case BLE_GATTS_EVT_HVC:
+            m_indication_pending = false;
+            break;
+        case BLE_GATTS_EVT_HVN_TX_COMPLETE:
+            m_indication_pending = false;
+            break;
+        
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
             // Pairing not supported
             err_code = sd_ble_gap_sec_params_reply(m_estc_service.connection_handle,
