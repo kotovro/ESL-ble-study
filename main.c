@@ -580,8 +580,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             sec_params.bond    = 0;
             sec_params.mitm    = 0;
             sec_params.io_caps = BLE_GAP_IO_CAPS_NONE;
-            sec_params.min_key_size = 7;
-            sec_params.max_key_size = 16;
+            sec_params.min_key_size = BLE_NFC_SEC_PARAM_MIN_KEY_SIZE;
+            sec_params.max_key_size = BLE_NFC_SEC_PARAM_MAX_KEY_SIZE;
 
             err_code = sd_ble_gap_sec_params_reply(
                 p_ble_evt->evt.gap_evt.conn_handle,

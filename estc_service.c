@@ -106,7 +106,7 @@ static ret_code_t estc_ble_add_characteristic(
     bool                         is_notification_enabled,
     bool                         is_indication_enabled,
     uint8_t                     *p_user_buffer,
-    const uint8_t               *p_init_value,        // ← was missing
+    const uint8_t               *p_init_value,
     uint16_t                     value_len,
     const uint8_t               *p_user_desc,
     uint16_t                     user_desc_len,
