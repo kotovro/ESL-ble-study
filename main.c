@@ -575,13 +575,29 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         //     break;
         
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
-            // Pairing not supported
-            err_code = sd_ble_gap_sec_params_reply(m_estc_service.connection_handle,
-                                                   BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP,
-                                                   NULL,
-                                                   NULL);
+        {
+            ble_gap_sec_params_t sec_params = { 0 };
+            sec_params.bond    = 0;
+            sec_params.mitm    = 0;
+            sec_params.io_caps = BLE_GAP_IO_CAPS_NONE;
+            sec_params.min_key_size = 7;
+            sec_params.max_key_size = 16;
+
+            err_code = sd_ble_gap_sec_params_reply(
+                p_ble_evt->evt.gap_evt.conn_handle,
+                BLE_GAP_SEC_STATUS_SUCCESS,
+                &sec_params,
+                NULL);
             APP_ERROR_CHECK(err_code);
-            break;
+            break;    
+        }
+        // // Pairing not supported
+            // err_code = sd_ble_gap_sec_params_reply(m_estc_service.connection_handle,
+            //                                        BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP,
+            //                                        NULL,
+            //                                        NULL);
+            // APP_ERROR_CHECK(err_code);
+            // break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
         {

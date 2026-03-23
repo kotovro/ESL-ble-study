@@ -129,8 +129,8 @@ static ret_code_t estc_ble_add_characteristic(
     char_md.p_cccd_md = &cccd_md;
 
     ble_gatts_attr_md_t attr_md = { 0 };
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attr_md.write_perm);
     attr_md.vlen = 1;
 
     ble_gatts_attr_t attr_char_value = { 0 };
