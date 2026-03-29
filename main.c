@@ -76,64 +76,13 @@
 #include "nrf_log_backend_usb.h"
 
 #include "estc_service.h"
-
-#define ADVERTISING_LED                 BSP_BOARD_LED_0                         /**< Is on when device is advertising. */
-#define CONNECTED_LED                   BSP_BOARD_LED_1                         /**< Is on when device has connected. */
-#define LEDBUTTON_LED                   BSP_BOARD_LED_2                         /**< LED to be toggled with the help of the LED Button Service. */
-#define LEDBUTTON_BUTTON                BSP_BUTTON_0                            /**< Button that will trigger the notification event with the LED Button Service */
-
-#define DEVICE_NAME                     "Konstatnit Voronetsky"                         /**< Name of device. Will be included in the advertising data. */
-
-#define APP_BLE_OBSERVER_PRIO           3                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
-#define APP_BLE_CONN_CFG_TAG            1                                       /**< A tag identifying the SoftDevice BLE configuration. */
-
-#define APP_ADV_INTERVAL                64                                      /**< The advertising interval (in units of 0.625 ms; this value corresponds to 40 ms). */
-#define APP_ADV_DURATION                BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED   /**< The advertising time-out (in units of seconds). When set to 0, we will never time out. */
-
-
-#define MIN_CONN_INTERVAL               MSEC_TO_UNITS(100, UNIT_1_25_MS)        /**< Minimum acceptable connection interval (0.5 seconds). */
-#define MAX_CONN_INTERVAL               MSEC_TO_UNITS(200, UNIT_1_25_MS)        /**< Maximum acceptable connection interval (1 second). */
-#define SLAVE_LATENCY                   0                                       /**< Slave latency. */
-#define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(4000, UNIT_10_MS)         /**< Connection supervisory time-out (4 seconds). */
-
-#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(20000)                  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (15 seconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(5000)                   /**< Time between each call to sd_ble_gap_conn_param_update after the first call (5 seconds). */
-#define MAX_CONN_PARAMS_UPDATE_COUNT    3                                       /**< Number of attempts before giving up the connection parameter negotiation. */
-
-#define BUTTON_DETECTION_DELAY          APP_TIMER_TICKS(50)                     /**< Delay from a GPIOTE event until a button is reported as pushed (in number of timer ticks). */
-
-#define DEAD_BEEF                       0xDEADBEEF                              /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
-
-#define INDICATION_FREQUENCY_MS    500
-#define NOTIFICATION_FREQUENCY_MS    1000
+#include "ble_utils.h"
 
 APP_TIMER_DEF(m_indication_timer_id);
 APP_TIMER_DEF(m_notification_timer_id);                                                          
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);         
 BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
-
-//  static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
-
-// static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
-// static uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];                    /**< Buffer for storing an encoded advertising set. */
-// static uint8_t m_enc_scan_response_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];         /**< Buffer for storing an encoded scan data. */
-
-// /**@brief Struct that contains pointers to the encoded advertising data. */
-// static ble_gap_adv_data_t m_adv_data =
-// {
-//     .adv_data =
-//     {
-//         .p_data = m_enc_advdata,
-//         .len    = BLE_GAP_ADV_SET_DATA_SIZE_MAX
-//     },
-//     .scan_rsp_data =
-//     {
-//         .p_data = m_enc_scan_response_data,
-//         .len    = BLE_GAP_ADV_SET_DATA_SIZE_MAX
-
-//     }
-// };
 
 /// simplest option is to increment this value anf then write it
 static uint8_t variable_changed_on_indication = 0;
@@ -177,38 +126,7 @@ static void leds_init(void)
 }
 
 
-uint32_t send_notitification(uint16_t conn_handle, const uint8_t *data) 
-{
-    ble_gatts_hvx_params_t hvx_params = {0};
-    uint16_t len = sizeof(data);
 
-    memset(&hvx_params, 0, sizeof(hvx_params));
-    hvx_params.handle = m_estc_service.characteristic_with_notification_handle.value_handle;
-    hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
-    hvx_params.p_len  = &len;
-    hvx_params.p_data = data;
-    
-    uint32_t err = sd_ble_gatts_hvx(conn_handle, &hvx_params);
-    return err;
-}
-
-
-uint32_t send_indication(uint16_t conn_handle, const uint8_t *data) 
-{
-    ble_gatts_hvx_params_t hvx_params = {0};
-    uint16_t len = sizeof(*data);
-
-    NRF_LOG_INFO("len is: %d", len);
-
-    memset(&hvx_params, 0, sizeof(hvx_params));
-    hvx_params.handle = m_estc_service.characteristic_timer_dependent_handle.value_handle;
-    hvx_params.type   = BLE_GATT_HVX_INDICATION;
-    hvx_params.p_len  = &len;
-    hvx_params.p_data = data;
-    
-    uint32_t err = sd_ble_gatts_hvx(conn_handle, &hvx_params);
-    return err;
-}
 
 
 /**@brief Function for the Timer callback.
@@ -231,6 +149,7 @@ void estc_indicate_update_on_timer(void *context)
     // NRF_LOG_INFO("Will try to indicate value: %d", variable_changed_on_indication);
     ret_code_t err = send_indication(
         m_estc_service.connection_handle,
+        m_estc_service.characteristic_timer_dependent_handle.value_handle,
         &variable_changed_on_indication);
     if (err != NRF_SUCCESS)
     {
@@ -251,15 +170,10 @@ void estc_notify_update_on_timer(void *context)
 
     ret_code_t err = send_notitification(
         m_estc_service.connection_handle,
+        m_estc_service.characteristic_with_notification_handle.value_handle,
         (uint8_t *)&notification_value);
     APP_ERROR_CHECK(err);
 }
-
-// void estc_notify_update_on_timer(ble_estc_service_t *service, int32_t *value)
-// {
-
-//     // send_notification(service, m_estc_service->connection_handle, value);
-// }
 
 
 /**@brief Function for the Timer initialization.
@@ -550,7 +464,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                 estc_update_characteristic_1_value(&m_estc_service, (int32_t *)write->data); 
                 if (m_notification_enabled)
                 {
-                    err_code = send_notitification(m_estc_service.connection_handle, write->data);
+                    err_code = send_notitification(m_estc_service.connection_handle, m_estc_service.characteristic_with_notification_handle.value_handle, write->data);
                     APP_ERROR_CHECK(err_code);
                 }
             }
