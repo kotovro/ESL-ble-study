@@ -124,6 +124,7 @@ static void leds_init(void)
     bsp_board_init(BSP_INIT_LEDS);
 }
 
+
 /**@brief Function for the Timer callback.
  *
  * @details Increments the indication variable and sends indication with the new value. This function will be called each time the timer expires.
@@ -185,62 +186,6 @@ static void timers_init(void)
     err_code = app_timer_create(&m_notification_timer_id, APP_TIMER_MODE_REPEATED, estc_notify_update_on_timer);
     APP_ERROR_CHECK(err_code);
 }
-
-/**@brief Function for handling the Connection Parameters Module.
- *
- * @details This function will be called for all events in the Connection Parameters Module that
- *          are passed to the application.
- *
- * @note All this function does is to disconnect. This could have been done by simply
- *       setting the disconnect_on_fail config parameter, but instead we use the event
- *       handler mechanism to demonstrate its use.
- *
- * @param[in] p_evt  Event received from the Connection Parameters Module.
- */
-static void on_conn_params_evt(ble_conn_params_evt_t * p_evt)
-{
-    ret_code_t err_code;
-
-    if (p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED)
-    {
-        err_code = sd_ble_gap_disconnect(m_estc_service.connection_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
-        APP_ERROR_CHECK(err_code);
-    }
-}
-
-
-/**@brief Function for handling a Connection Parameters error.
- *
- * @param[in] nrf_error  Error code containing information about what went wrong.
- */
-static void conn_params_error_handler(uint32_t nrf_error)
-{
-    APP_ERROR_HANDLER(nrf_error);
-}
-
-
-/**@brief Function for initializing the Connection Parameters module.
- */
-static void conn_params_init(void)
-{
-    ret_code_t             err_code;
-    ble_conn_params_init_t cp_init;
-
-    memset(&cp_init, 0, sizeof(cp_init));
-
-    cp_init.p_conn_params                  = NULL;
-    cp_init.first_conn_params_update_delay = FIRST_CONN_PARAMS_UPDATE_DELAY;
-    cp_init.next_conn_params_update_delay  = NEXT_CONN_PARAMS_UPDATE_DELAY;
-    cp_init.max_conn_params_update_count   = MAX_CONN_PARAMS_UPDATE_COUNT;
-    cp_init.start_on_notify_cccd_handle    = BLE_GATT_HANDLE_INVALID;
-    cp_init.disconnect_on_fail             = false;
-    cp_init.evt_handler                    = on_conn_params_evt;
-    cp_init.error_handler                  = conn_params_error_handler;
-
-    err_code = ble_conn_params_init(&cp_init);
-    APP_ERROR_CHECK(err_code);
-}
-
 
 /**@brief Function for starting advertising.
  */
@@ -420,54 +365,6 @@ static void ble_stack_init(void)
 }
 
 
-/**@brief Function for handling events from the button handler module.
- *
- * @param[in] pin_no        The pin that the event applies to.
- * @param[in] button_action The button action (press/release).
- */
-// static void button_event_handler(uint8_t pin_no, uint8_t button_action)
-// {
-//     ret_code_t err_code;
-
-//     switch (pin_no)
-//     {
-//         case LEDBUTTON_BUTTON:
-//             NRF_LOG_INFO("Send button state change.");
-//             err_code = ble_lbs_on_button_change(m_conn_handle, &m_lbs, button_action);
-//             if (err_code != NRF_SUCCESS &&
-//                 err_code != BLE_ERROR_INVALID_CONN_HANDLE &&
-//                 err_code != NRF_ERROR_INVALID_STATE &&
-//                 err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)
-//             {
-//                 APP_ERROR_CHECK(err_code);
-//             }
-//             break;
-
-//         default:
-//             APP_ERROR_HANDLER(pin_no);
-//             break;
-//     }
-// }
-
-
-/**@brief Function for initializing the button handler module.
-//  */
-// static void buttons_init(void)
-// {
-//     ret_code_t err_code;
-
-//     //The array must be static because a pointer to it will be saved in the button handler module.
-//     static app_button_cfg_t buttons[] =
-//     {
-//         {LEDBUTTON_BUTTON, false, BUTTON_PULL, button_event_handler}
-//     };
-
-//     err_code = app_button_init(buttons, ARRAY_SIZE(buttons),
-//                                BUTTON_DETECTION_DELAY);
-//     APP_ERROR_CHECK(err_code);
-// }
-
-
 static void log_init(void)
 {
     ret_code_t err_code = NRF_LOG_INIT(NULL);
@@ -516,7 +413,7 @@ int main(void)
     gatt_init(&m_gatt);
     services_init(&m_qwr, &m_estc_service);
     advertising_init(m_adv_uuids, on_adv_evt, &m_advertising);
-    conn_params_init();
+    conn_params_init(&m_estc_service.connection_handle);
 
     // Start execution.
     NRF_LOG_INFO("Blinky example started.");
