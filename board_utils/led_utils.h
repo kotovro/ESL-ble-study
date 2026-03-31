@@ -13,7 +13,7 @@ void pattern_off(void);
 void pattern_on(void);
 void show_rgb_color(COLOR_RGB color);
 void show_color(COLOR_DESCRIPTION* color);
-void init_leds_init(void);
+void init_leds_init(COMMAND_CONTEXT* context);
 void init_pwm_leds(COLOR_DESCRIPTION* color);
 
 #endif

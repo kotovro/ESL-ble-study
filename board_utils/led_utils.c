@@ -3,7 +3,7 @@
 #include "led_utils.h"
 #include "color_utils.h"
 
-//TODO: store pointer to application context here
+COMMAND_CONTEXT* m_application_context;
 nrf_pwm_values_individual_t led_seq[FADE_STEPS];
 
 void show_color(COLOR_DESCRIPTION* color) 
@@ -39,18 +39,59 @@ void show_color(COLOR_DESCRIPTION* color)
 
 void show_rgb_color(COLOR_RGB color) 
 {
-    for (int i = 0; i < FADE_STEPS / 2; ++i) 
+    if (*(m_application_context->mode_global) == SLEEP)
     {
-        led_seq[i].channel_1 = color.r / 255.f * MAX_PWM_VALUE;
-        led_seq[i].channel_2 = color.g / 255.f * MAX_PWM_VALUE;
-        led_seq[i].channel_3 = color.b / 255.f * MAX_PWM_VALUE;
+        for (int i = 0; i < FADE_STEPS; ++i) 
+        {
+            led_seq[i].channel_1 = color.r / 255.f * MAX_PWM_VALUE;
+            led_seq[i].channel_2 = color.g / 255.f * MAX_PWM_VALUE;
+            led_seq[i].channel_3 = color.b / 255.f * MAX_PWM_VALUE;
+        }
     }
-
-    for (int i = FADE_STEPS / 2; i < FADE_STEPS; ++i) 
+    else if (*(m_application_context->mode_global) == PICKING_HUE)
     {
-        led_seq[i].channel_1 = 0;
-        led_seq[i].channel_2 = 0;
-        led_seq[i].channel_3 = 0;
+        for (int i = 0; i < FADE_STEPS; ++i) 
+        {
+            led_seq[i].channel_1 = i % 2 ? 0 : color.r / 255.f * MAX_PWM_VALUE;
+            led_seq[i].channel_2 = i % 2 ? 0 : color.g / 255.f * MAX_PWM_VALUE;
+            led_seq[i].channel_3 = i % 2 ? 0 : color.b / 255.f * MAX_PWM_VALUE;
+        }
+    }
+    else if (*(m_application_context->mode_global) == PICKING_SATURATION)
+    {
+        for (int i = 0; i < FADE_STEPS; i++) 
+        {
+            led_seq[i].channel_1 =
+            (i <= FADE_STEPS / 2)
+            ? (i * color.r / 255.f * MAX_PWM_VALUE) / (FADE_STEPS / 2)
+            : ((FADE_STEPS - i) * color.r / 255.f * MAX_PWM_VALUE) / (FADE_STEPS / 2);
+    
+            led_seq[i].channel_2 = (i <= FADE_STEPS / 2)
+            ? (i * color.g / 255.f * MAX_PWM_VALUE) / (FADE_STEPS / 2)
+            : ((FADE_STEPS - i) * color.g / 255.f * MAX_PWM_VALUE) / (FADE_STEPS / 2);
+    
+            led_seq[i].channel_3 = (i <= FADE_STEPS / 2)
+            ? (i * color.b / 255.f * MAX_PWM_VALUE) / (FADE_STEPS / 2)
+            : ((FADE_STEPS - i) * color.b / 255.f * MAX_PWM_VALUE) / (FADE_STEPS / 2);
+
+        }
+    }
+    else if (*(m_application_context->mode_global) == PICKING_VALUE)
+    {
+        // save_current_color(NULL, m_application_context);
+        for (int i = 0; i < (FADE_STEPS - 2); ++i) 
+        {
+            led_seq[i].channel_1 = color.r / 255.f * MAX_PWM_VALUE;
+            led_seq[i].channel_2 = color.g / 255.f * MAX_PWM_VALUE;
+            led_seq[i].channel_3 = color.b / 255.f * MAX_PWM_VALUE;
+        }
+
+        for (int i = (FADE_STEPS - 2); i < FADE_STEPS; ++i) 
+        {
+            led_seq[i].channel_1 = 0;
+            led_seq[i].channel_2 = 0;
+            led_seq[i].channel_3 = 0;
+        }
     }
 }
 
@@ -106,7 +147,7 @@ static void gpio_output_voltage_setup(void)
 }
 #endif
 
-void init_leds_init(void)
+void init_leds_init(COMMAND_CONTEXT* context)
 {
     #if defined(BOARD_PCA10059)
     // If nRF52 USB Dongle is powered from USB (high voltage mode),
@@ -119,6 +160,7 @@ void init_leds_init(void)
         gpio_output_voltage_setup();
     }
     #endif
+    m_application_context = context;
 }
 
 static nrfx_pwm_t m_pwn_status_led = NRFX_PWM_INSTANCE(2);

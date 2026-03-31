@@ -98,6 +98,8 @@ SRC_FILES += \
   $(PROJ_DIR)/ble_utils.c \
   $(PROJ_DIR)/board_utils/led_utils.c \
   $(PROJ_DIR)/board_utils/color_utils.c \
+   $(PROJ_DIR)/board_utils/button_utils.c \
+  $(PROJ_DIR)/board_utils/button_executor.c \
   $(PROJ_DIR)/main.c \
   
 
