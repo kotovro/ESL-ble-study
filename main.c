@@ -77,7 +77,13 @@
 
 #include "estc_service.h"
 #include "ble_utils.h"
+
 #include "board_utils.h"
+#include "unknown_command.h"
+#include "set_rgb_command.h"
+#include "set_hsv_command.h"
+#include "help_command.h"
+
 
 // APP_TIMER_DEF(m_indication_timer_id);
 APP_TIMER_DEF(m_notification_timer_id);                                                          
@@ -391,6 +397,14 @@ static void log_init(void)
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 }
 
+void fill_command_definitions()
+{
+    init_command_definitions();
+    command_definitions[0] = set_rgb_command;
+    command_definitions[1] = set_hsv_command;
+    command_definitions[2] = help_command;
+}
+
 
 /**@brief Function for initializing power management.
  */
@@ -435,6 +449,9 @@ int main(void)
     advertising_init(m_adv_uuids, on_adv_evt, &m_advertising);
     conn_params_init(&m_estc_service.connection_handle);
 
+    fill_command_definitions();
+    init_usb_cli(command_definitions, sizeof(command_definitions) / sizeof(COMMAND_DEFINITION),
+                unknown_command_executor, &application_context);
     // Start execution.
     NRF_LOG_INFO("Blinky example started.");
 

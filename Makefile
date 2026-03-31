@@ -6,6 +6,8 @@ DFU_PORT         ?= /dev/ttyACM0
 SDK_ROOT ?= ../devel/esl-nsdk
 PROJ_DIR := .
 
+ESTC_USB_CLI_ENABLED ?= 1
+
 $(OUTPUT_DIRECTORY)/nrf52840_xxaa.out: \
   LINKER_SCRIPT  := ble_app_blinky_gcc_nrf52.ld
 
@@ -98,7 +100,8 @@ SRC_FILES += \
   $(PROJ_DIR)/ble_utils.c \
   $(PROJ_DIR)/board_utils/led_utils.c \
   $(PROJ_DIR)/board_utils/color_utils.c \
-   $(PROJ_DIR)/board_utils/button_utils.c \
+  $(PROJ_DIR)/board_utils/cli_utils.c \
+  $(PROJ_DIR)/board_utils/button_utils.c \
   $(PROJ_DIR)/board_utils/button_executor.c \
   $(PROJ_DIR)/main.c \
   
@@ -266,6 +269,7 @@ CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # keep every function in a separate section, this allows linker to discard unused ones
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
 CFLAGS += -fno-builtin -fshort-enums
+CFLAGS += -DESTC_USB_CLI_ENABLED=$(ESTC_USB_CLI_ENABLED)
 
 # C++ flags common to all targets
 CXXFLAGS += $(OPT)
