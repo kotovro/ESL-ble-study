@@ -121,12 +121,12 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
  *
  * @details Initializes all LEDs used by the application.
  */
-// static void leds_init(void)
-// {
-//     init_leds_init();
-//     init_pwm_leds(&color_description);
-//     // bsp_board_init(BSP_INIT_LEDS);
-// }
+static void leds_init(void)
+{
+    init_leds_init();
+    init_pwm_leds(&color_description);
+    // bsp_board_init(BSP_INIT_LEDS);
+}
 
 
 /**@brief Function for the Timer callback.
@@ -201,8 +201,8 @@ static void advertising_start(void)
     // err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG); - low-level call of gap
     APP_ERROR_CHECK(err_code);
 
-    // bsp_board_led_on(ADVERTISING_LED);
-    APP_ERROR_CHECK(err_code);
+    pattern_slow_blinking();
+    
 }
 
 
@@ -220,7 +220,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             NRF_LOG_INFO("Connected");
             // bsp_board_led_on(CONNECTED_LED);
             // bsp_board_led_off(ADVERTISING_LED);
-            // pattern_on();
+            pattern_on();
             m_estc_service.connection_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_estc_service.connection_handle);
             APP_ERROR_CHECK(err_code);
@@ -234,7 +234,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected");
             // bsp_board_led_off(CONNECTED_LED);
-            // pattern_slow_blinking();
+            pattern_slow_blinking();
             m_estc_service.connection_handle = BLE_CONN_HANDLE_INVALID;
             app_timer_stop(m_notification_timer_id);
             app_timer_stop(m_indication_timer_id);
@@ -410,7 +410,7 @@ int main(void)
     // Initialize.
 
     log_init();
-    // leds_init();
+    leds_init();
     timers_init();
     // buttons_init();
     power_management_init();

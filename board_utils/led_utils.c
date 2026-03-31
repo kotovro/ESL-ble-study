@@ -3,6 +3,7 @@
 #include "led_utils.h"
 #include "color_utils.h"
 
+//TODO: store pointer to application context here
 nrf_pwm_values_individual_t led_seq[FADE_STEPS];
 
 void show_color(COLOR_DESCRIPTION* color) 
@@ -38,11 +39,18 @@ void show_color(COLOR_DESCRIPTION* color)
 
 void show_rgb_color(COLOR_RGB color) 
 {
-    for (int i = 0; i < FADE_STEPS; i++) 
+    for (int i = 0; i < FADE_STEPS / 2; ++i) 
     {
         led_seq[i].channel_1 = color.r / 255.f * MAX_PWM_VALUE;
         led_seq[i].channel_2 = color.g / 255.f * MAX_PWM_VALUE;
         led_seq[i].channel_3 = color.b / 255.f * MAX_PWM_VALUE;
+    }
+
+    for (int i = FADE_STEPS / 2; i < FADE_STEPS; ++i) 
+    {
+        led_seq[i].channel_1 = 0;
+        led_seq[i].channel_2 = 0;
+        led_seq[i].channel_3 = 0;
     }
 }
 
