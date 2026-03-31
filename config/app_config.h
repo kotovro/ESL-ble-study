@@ -211,6 +211,5 @@
 #define INDICATION_FREQUENCY_MS    500
 #define NOTIFICATION_FREQUENCY_MS    1000
 
-// </e>
 
 #endif

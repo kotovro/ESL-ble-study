@@ -1,0 +1,7 @@
+#ifndef BOARD_UTILS_COLOR_UTILS_H
+#define BOARD_UTILS_COLOR_UTILS_H
+
+COLOR_HSV rgb_to_hsv(COLOR_RGB rgb);
+COLOR_RGB hsv_to_rgb(COLOR_HSV hsv);
+
+#endif // BOARD_UTILS_COLOR_UTILS_H
