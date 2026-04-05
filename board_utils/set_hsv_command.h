@@ -1,6 +1,6 @@
 #include "command_utils.h"
 
-void set_hsv_executor(char* args, COMMAND_CONTEXT* context)
+void set_hsv_executor(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8_t data_len)
 {
     char msg[100];
     COLOR_HSV color = 
@@ -11,22 +11,49 @@ void set_hsv_executor(char* args, COMMAND_CONTEXT* context)
     };
     
     int cur_pos = 0;
-    bool is_args_valid = true;
-    if(!try_parse_int_arg(args, &cur_pos, &(color.h)) || color.h > 360){
-        is_args_valid = false;
+    bool is_binary_arg = ((data != NULL) && (data_len == 4));
+    bool is_args_valid = (((args != NULL) && (strlen(args) > 0)) || is_binary_arg);
+    if (is_args_valid){
+        if (is_binary_arg) 
+        {
+            color.h = (uint16_t)(data[0] << 8 | data[1]);
+            color.s = data[2];
+            color.v = data[3];
+        } else {
+            if(!try_parse_int_arg(args, &cur_pos, &(color.h))){
+                is_args_valid = false;
+            } 
+        }
+        if (is_args_valid){
+            is_args_valid = color.h <= 360;
+        }
     }
 
     uint16_t parsed_value = 0;
-    if(!is_args_valid || !try_parse_int_arg(args, &cur_pos, &parsed_value) || parsed_value > 100){
-        is_args_valid = false;
-    } else {
-        color.s = (uint8_t)parsed_value;
+    if (is_args_valid){
+        if (!is_binary_arg){
+            if (!try_parse_int_arg(args, &cur_pos, &parsed_value)){
+                is_args_valid = false;
+            } else {
+                color.s = (uint8_t)parsed_value;
+            }
+        }
+        if (is_args_valid){
+             is_args_valid = color.s <= 100;
+        }
     }
-    
-    if(!is_args_valid || !try_parse_int_arg(args, &cur_pos, &parsed_value) || parsed_value > 100){
-        is_args_valid = false;
-    } else {
-        color.v = (uint8_t)parsed_value;
+
+    if (is_args_valid){
+        if (!is_binary_arg){
+            if (!try_parse_int_arg(args, &cur_pos, &parsed_value)){
+                is_args_valid = false;
+            } else {
+                color.v = (uint8_t)parsed_value;
+            }
+        }
+        if (is_args_valid){
+             is_args_valid = color.v <= 100;
+        }
     }
 
     if (is_args_valid)
@@ -37,13 +64,17 @@ void set_hsv_executor(char* args, COMMAND_CONTEXT* context)
         show_color(context->current_color_description);
         snprintf(msg, sizeof(msg),
                 "Color set to: H=%u, S=%u, V=%u\r\n", color.h, color.s, color.v);
-        
+
         usb_serial_dumb_print(msg, strlen(msg));
     }
     else 
     {
-        unknown_command_executor(args, context);
-        NRF_LOG_INFO("Invalid set hsv arguments detected: %s", args);
+        unknown_command_executor(args, context, data, data_len);
+        if (is_binary_arg) {
+            NRF_LOG_INFO("Invalid set hsv binary arguments detected");
+        } else {
+            NRF_LOG_INFO("Invalid set hsv arguments detected: %s", args);
+        }
     }
     
 }

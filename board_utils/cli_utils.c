@@ -116,7 +116,7 @@ void parse_command()
     {
         get_argument_string(arguments, cmd_name_length, 32);
     }
-    executor(arguments, m_application_context);
+    executor(arguments, m_application_context, NULL, 0);
 }
 
 static void parse_command_timer_handler(void * p_context)

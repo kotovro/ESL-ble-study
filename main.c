@@ -181,7 +181,7 @@ void estc_notify_update_on_timer(void *context)
     notification_value++;
     estc_update_characteristic_1_value(
         &m_estc_service,
-        (int32_t *)&notification_value);
+        (uint8_t *)&notification_value);
 
     if (!m_notification_enabled)
         return;
@@ -269,7 +269,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             // NRF_LOG_INFO("Received write event, data: %d", m_estc_service.characteristic_timer_dependent_handle.cccd_handle);
             if (write->handle == m_estc_service.characteristic_with_notification_handle.value_handle)
             {
-                estc_update_characteristic_1_value(&m_estc_service, (int32_t *)write->data); 
+                estc_update_characteristic_1_value(&m_estc_service, (uint8_t *)write->data); 
+                NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->len);
                 if (m_notification_enabled)
                 {
                     err_code = send_notitification(m_estc_service.connection_handle, m_estc_service.characteristic_with_notification_handle.value_handle, write->data);
@@ -445,7 +446,8 @@ int main(void)
     ble_stack_init();
     gap_params_init();
     gatt_init(&m_gatt);
-    services_init(&m_qwr, &m_estc_service);
+    services_init(&m_qwr, &m_estc_service, command_definitions, sizeof(command_definitions) / sizeof(COMMAND_DEFINITION),
+                unknown_command_executor, &application_context);
     advertising_init(m_adv_uuids, on_adv_evt, &m_advertising);
     conn_params_init(&m_estc_service.connection_handle);
 

@@ -173,7 +173,8 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
 
 /**@brief Function for initializing services that will be used by the application.
  */
-void services_init(nrf_ble_qwr_t* qwr, ble_estc_service_t* estc_service)
+void services_init(nrf_ble_qwr_t* qwr, ble_estc_service_t* estc_service, COMMAND_DEFINITION* known_commands, size_t known_commands_size,
+                Command_Executor default_command, COMMAND_CONTEXT* application_context)
 {
     ret_code_t         err_code;
     nrf_ble_qwr_init_t qwr_init = {0};
@@ -185,7 +186,7 @@ void services_init(nrf_ble_qwr_t* qwr, ble_estc_service_t* estc_service)
     err_code = nrf_ble_qwr_init(qwr, &qwr_init);
     APP_ERROR_CHECK(err_code);
 
-    err_code = estc_ble_service_init(estc_service);
+    err_code = estc_ble_service_init(estc_service, known_commands, known_commands_size, default_command, application_context);
     APP_ERROR_CHECK(err_code);
 }
 

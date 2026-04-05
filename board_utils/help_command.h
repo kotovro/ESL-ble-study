@@ -1,6 +1,6 @@
 #include "command_utils.h"
 
-void print_help_message(char* args, COMMAND_CONTEXT* context)
+void print_help_message(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8_t data_len)
 {
     char msg[1024];
     msg[0] = '\0';

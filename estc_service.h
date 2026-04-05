@@ -36,6 +36,7 @@
 #include "ble.h"
 #include "sdk_errors.h"
 
+#include "cli_utils.h"
 // TODO: 1. Generate random BLE UUID (Version 4 UUID) and define it in the following format:
 // #define ESTC_BASE_UUID { 0xF6, 0xCE, 0x0F, 0xC4, 0xCE, 0x9F, /* - */ 0xC3, 0x99, /* - */ 0xF7, 0x4D, /* - */ 0xDB, 0xB9, /* - */ 0x00, 0x00, 0xEC, 0x39 } // UUID: EC39xxxx-B9DB-4DF7-99C3-9FCEC40FCEF6
 // bf488398-8f43-42ed-9165-4ebdba397e23
@@ -60,11 +61,14 @@ typedef struct
     ble_gatts_char_handles_t another_characteristic_handle;
 } ble_estc_service_t;
 
-ret_code_t estc_ble_service_init(ble_estc_service_t *service);
+volatile static bool m_is_processing; 
+
+ret_code_t estc_ble_service_init(ble_estc_service_t *service, COMMAND_DEFINITION* known_commands, size_t known_commands_size,
+                Command_Executor default_command, COMMAND_CONTEXT* application_context);
 
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
 
-void estc_update_characteristic_1_value(ble_estc_service_t *service, int32_t *value);
+void estc_update_characteristic_1_value(ble_estc_service_t *service, uint8_t *value);
 
 void estc_update_timer_dependent_characteristic_value(ble_estc_service_t *service, uint8_t *value); 
 

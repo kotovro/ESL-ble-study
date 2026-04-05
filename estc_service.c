@@ -27,24 +27,57 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
 */
-
-#include "estc_service.h"
-
 #include "app_error.h"
 #include "nrf_log.h"
-
+#include "app_timer.h"
+#include "nrfx_clock.h"
 #include "ble.h"
 #include "ble_gatts.h"
 #include "ble_srv_common.h"
 
-static uint8_t m_ram_local_buffer[20];
+#include "estc_service.h"
 
+
+APP_TIMER_DEF(processing_start_timer);
+
+
+static uint8_t m_ram_local_buffer[20];
+static uint8_t *m_context;
+static COMMAND_DEFINITION* m_command_definitions;
+static Command_Executor m_default_executor;
+static size_t m_command_definitions_size;
+static COMMAND_CONTEXT* m_application_context;
 
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service);
 static ret_code_t estc_ble_add_notifications_characteristic(ble_estc_service_t *service);
 static ret_code_t estc_ble_add_timer_dependent_characteristic(ble_estc_service_t *service);
 
-ret_code_t estc_ble_service_init(ble_estc_service_t *service)
+///command_context
+void estc_execute_command()
+{
+    m_is_processing = true;
+    if (m_context != NULL)
+    {
+        ///try parse
+        //if (try_parse) 
+        //execute(); - executor passed form outside
+    }
+}
+
+void init_processing_timers()
+{
+    ret_code_t err_code;
+    
+    err_code = app_timer_create(&processing_start_timer,
+                                APP_TIMER_MODE_SINGLE_SHOT,
+                                estc_execute_command);
+    APP_ERROR_CHECK(err_code);
+
+    //app_timer_create(&processing_start_timer, APP_TIMER_MODE_SINGLE_SHOT, NULL);
+}
+
+ret_code_t estc_ble_service_init(ble_estc_service_t *service, COMMAND_DEFINITION* known_commands, size_t known_commands_size,
+                Command_Executor default_command, COMMAND_CONTEXT* application_context)
 {
     ret_code_t error_code = NRF_SUCCESS;
 
@@ -65,6 +98,11 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service)
     NRF_LOG_INFO("%s:%d | Service UUID: 0x%04x", __FUNCTION__, __LINE__, service_uuid.uuid);
     NRF_LOG_INFO("%s:%d | Service UUID type: 0x%02x", __FUNCTION__, __LINE__, service_uuid.type);
     NRF_LOG_INFO("%s:%d | Service handle: 0x%04x", __FUNCTION__, __LINE__, service->service_handle);
+
+    m_command_definitions = known_commands;
+    m_command_definitions_size = known_commands_size;
+    m_default_executor = default_command;
+    m_application_context = application_context;
 
     return estc_ble_add_characteristics(service);
 }
@@ -97,6 +135,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 
     return error_code;
 }
+
 
 static ret_code_t estc_ble_add_characteristic(
     ble_estc_service_t          *service,
@@ -162,7 +201,7 @@ static ret_code_t estc_ble_add_characteristic(
     char_md.char_user_desc_size     = user_desc_len;
     char_md.char_user_desc_max_size = user_desc_len;
     char_md.p_user_desc_md          = &user_desc_md;
-
+    
     error_code = sd_ble_gatts_characteristic_add(
         service->service_handle, &char_md, &attr_char_value, p_char_handles);
     return error_code;
@@ -202,13 +241,22 @@ static ret_code_t estc_ble_add_timer_dependent_characteristic(ble_estc_service_t
 }
 
 
-void estc_update_characteristic_1_value(ble_estc_service_t *service, int32_t *value)
+void estc_update_characteristic_1_value(ble_estc_service_t *service, uint8_t *value)
 {
     ble_gatts_value_t gatts_value = {0};
-    gatts_value.len = sizeof(int32_t);
+    gatts_value.len = sizeof(uint8_t);
     gatts_value.offset = 0;
-    gatts_value.p_value = (uint8_t *)value;
+    gatts_value.p_value = value;
 
+    
+    NRF_LOG_INFO("Will try to update value: %d", *value);
+    NRF_LOG_INFO("Will try to update value: %d", *(value + 1));
+    NRF_LOG_INFO("Will try to update value: %d", *(value + 2));
+    // if (!m_is_processing)
+    // {
+    //     app_timer_start(processing_start_timer, APP_TIMER_TICKS(100), NULL);
+    // }
+    // else { send processing status to client}
     ret_code_t error_code = sd_ble_gatts_value_set(service->connection_handle, service->characteristic_with_notification_handle.value_handle, &gatts_value);
     APP_ERROR_CHECK(error_code);
 }

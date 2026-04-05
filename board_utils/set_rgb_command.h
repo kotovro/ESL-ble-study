@@ -1,7 +1,7 @@
 #include "command_utils.h"
 #include "color_utils.h"
 
-void set_rgb_executor(char* args, COMMAND_CONTEXT* context)
+void set_rgb_executor(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8_t data_len)
 {
     char msg[100];
     COLOR_RGB color = 
@@ -10,17 +10,45 @@ void set_rgb_executor(char* args, COMMAND_CONTEXT* context)
         .g = 0,
         .b = 0,
     };
-    bool is_args_valid = true;
+    bool is_binary_arg = ((data != NULL) && (data_len == 3));
+    bool is_args_valid = (((args != NULL) && (strlen(args) > 0)) || is_binary_arg);
     int cur_pos = 0;
-    if(!try_parse_int_arg(args, &cur_pos, &(color.r)) || color.r > 255){
-        is_args_valid = false;
-    }     
-    if(!is_args_valid || !try_parse_int_arg(args, &cur_pos, &(color.g)) || color.g > 255){
-        is_args_valid = false;
-    } 
+    if (is_args_valid){
+        if (is_binary_arg) 
+        {
+            color.r = data[0];
+            color.g = data[1];
+            color.b = data[2];
+        } else {
+            if(!try_parse_int_arg(args, &cur_pos, &(color.r))){
+                is_args_valid = false;
+            } 
+        }
+        if (is_args_valid){
+            is_args_valid = color.r <= 255;
+        }
+    }
     
-    if(!is_args_valid || !try_parse_int_arg(args, &cur_pos, &(color.b)) || color.b > 255){
-        is_args_valid = false;
+    if (is_args_valid){
+        if (!is_binary_arg){
+            if (!try_parse_int_arg(args, &cur_pos, &(color.g))){
+                is_args_valid = false;
+            }
+        }
+        if (is_args_valid){
+             is_args_valid = color.g <= 255;
+        }
+    }
+
+    if (is_args_valid){
+        if (!is_binary_arg){
+            if (!try_parse_int_arg(args, &cur_pos, &(color.b))){
+                is_args_valid = false;
+            }
+        }
+        if (is_args_valid){
+             is_args_valid = color.b <= 255;
+        }
     }
 
     if (is_args_valid)
@@ -37,8 +65,12 @@ void set_rgb_executor(char* args, COMMAND_CONTEXT* context)
     }
     else 
     {
-        unknown_command_executor(args, context);
-        NRF_LOG_INFO("Invalid set rgb arguments detected: %s", args);
+        unknown_command_executor(args, context, data, data_len);
+        if (is_binary_arg) {
+            NRF_LOG_INFO("Invalid set rgb binary arguments detected");
+        } else {
+            NRF_LOG_INFO("Invalid set rgb arguments detected: %s", args);
+        }
     }
 }
 

@@ -17,7 +17,7 @@
 #define ERROR_MESSAGE "Unknown command\r\n"
     
 
-typedef void  (*Command_Executor)(char*, COMMAND_CONTEXT*);
+typedef void  (*Command_Executor)(char*, COMMAND_CONTEXT*, uint8_t*, uint8_t);
 
 typedef struct
 {
