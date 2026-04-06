@@ -29,6 +29,7 @@
 #define PICKING_HUE         1
 #define PICKING_SATURATION  2
 #define PICKING_VALUE       3
+// #define POWER_OFF           4
 
 // --- Color ---
 #define COLOR_CHANGE_MS    100
@@ -45,6 +46,11 @@
 // --- Directions ---
 #define INCREASE true
 #define DECREASE false
+
+#define BLE_COMMAND_SUCCESS 0
+#define BLE_COMMAND_IN_PROCESS 1
+#define BLE_COMMAND_NOT_RECOGNIZED 2
+
 
 typedef struct {
     // 0 - RGB
@@ -84,6 +90,7 @@ typedef struct
     bool * hue_d;
     bool * saturation_d;
     bool * value_d;
+    uint8_t* ble_command_status;
 } COMMAND_CONTEXT;
 
 

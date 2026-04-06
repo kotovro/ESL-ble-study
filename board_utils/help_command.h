@@ -1,7 +1,8 @@
 #include "command_utils.h"
 
-void print_help_message(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8_t data_len)
+int print_help_message(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8_t data_len)
 {
+    bool is_binary_arg = ((data != NULL) && (data_len == 4));
     char msg[1024];
     msg[0] = '\0';
 
@@ -13,7 +14,10 @@ void print_help_message(char* args, COMMAND_CONTEXT* context, uint8_t* data, uin
             strncat(msg, command_definitions[i].description, sizeof(msg) - strlen(msg) - 1);
         }
     }
-    usb_serial_dumb_print(msg, strlen(msg));
+    if (!is_binary_arg) {
+        usb_serial_dumb_print(msg, strlen(msg));
+    }
+    return 0;
 }
 
 COMMAND_DEFINITION help_command = 

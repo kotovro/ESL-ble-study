@@ -1,6 +1,12 @@
-void unknown_command_executor(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8_t data_len)
+int unknown_command_executor(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8_t data_len)
 {
+    bool is_binary_arg = ((data != NULL));
     char msg[100];
     strcpy(msg, ERROR_MESSAGE);
-    usb_serial_dumb_print(msg, strlen(msg));
+    if (is_binary_arg) {
+        NRF_LOG_INFO(ERROR_MESSAGE);
+    } else {
+        usb_serial_dumb_print(msg, strlen(msg));
+    }
+    return -1;
 }

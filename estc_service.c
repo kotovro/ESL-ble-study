@@ -40,28 +40,75 @@
 
 APP_TIMER_DEF(processing_start_timer);
 
+typedef struct {
+    uint8_t status;
+    uint8_t command[20];
+} RESPONSE;
 
-static uint8_t m_ram_local_buffer[20];
-static uint8_t *m_context;
 static COMMAND_DEFINITION* m_command_definitions;
 static Command_Executor m_default_executor;
 static size_t m_command_definitions_size;
 static COMMAND_CONTEXT* m_application_context;
+static uint8_t m_write_data[20];
+static uint8_t m_write_data_len = 0;
+static RESPONSE m_response_data; 
+static ble_estc_service_t* m_service_instance;
 
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service);
-static ret_code_t estc_ble_add_notifications_characteristic(ble_estc_service_t *service);
-static ret_code_t estc_ble_add_timer_dependent_characteristic(ble_estc_service_t *service);
+static ret_code_t estc_ble_add_current_color_characteristic(ble_estc_service_t *service);
+static ret_code_t estc_ble_add_power_state_characteristic(ble_estc_service_t *service);
+static ret_code_t estc_ble_add_command_characteristic(ble_estc_service_t *service);
+static ble_gatts_value_t set_response();
 
-///command_context
-void estc_execute_command()
+// ///command_context
+void estc_execute_command(void * p_context)
 {
-    m_is_processing = true;
-    if (m_context != NULL)
+    NRF_LOG_INFO("Global mode is: %d", *m_application_context->mode_global);
+    NRF_LOG_INFO("Timer started %d", m_write_data_len);
+    if (m_write_data_len < 1) 
     {
-        ///try parse
-        //if (try_parse) 
-        //execute(); - executor passed form outside
+        *m_application_context->ble_command_status = BLE_COMMAND_NOT_RECOGNIZED;
+        return;
     }
+
+    NRF_LOG_INFO("Will try find: %d", m_write_data[0]);
+    COMMAND_DEFINITION* command = NULL;
+    for (size_t i = 0; i < m_command_definitions_size; ++i)
+    {
+        if (m_command_definitions[i].command_type == m_write_data[0]) 
+        {
+            command = &m_command_definitions[i];
+            NRF_LOG_INFO("Found command at index %d", i);
+            break;
+        }
+    }
+
+    if (command != NULL && command->command_type != CMD_UNKNOWN)
+    {
+        NRF_LOG_INFO("Command %s", command->name);
+        int ret_code = command->executor(NULL, m_application_context, m_write_data + 1, m_write_data_len - 1);
+        if (ret_code == 0) 
+        {
+            *m_application_context->ble_command_status = BLE_COMMAND_SUCCESS;
+        }
+        else if (ret_code == -1)
+        {
+            *m_application_context->ble_command_status = BLE_COMMAND_NOT_RECOGNIZED;
+        }
+    }
+    else
+    {
+        *m_application_context->ble_command_status = BLE_COMMAND_NOT_RECOGNIZED;
+        NRF_LOG_INFO("Command not recognized, type: %d", m_write_data[0]);
+    }
+    NRF_LOG_INFO("Global mode is: %d", *m_application_context->mode_global);
+    ble_gatts_value_t gatts_value = {.len = sizeof(*m_application_context->current_color_description), .offset = 0, .p_value = (uint8_t*)m_application_context->current_color_description};
+    ret_code_t error_code = sd_ble_gatts_value_set(m_service_instance->connection_handle, m_service_instance->current_color_characteristic_handle.value_handle, &gatts_value);
+    APP_ERROR_CHECK(error_code);
+    gatts_value = set_response();
+    error_code = sd_ble_gatts_value_set(m_service_instance->connection_handle, m_service_instance->command_characteristic_handle.value_handle, &gatts_value);
+    APP_ERROR_CHECK(error_code);
+    
 }
 
 void init_processing_timers()
@@ -79,6 +126,11 @@ void init_processing_timers()
 ret_code_t estc_ble_service_init(ble_estc_service_t *service, COMMAND_DEFINITION* known_commands, size_t known_commands_size,
                 Command_Executor default_command, COMMAND_CONTEXT* application_context)
 {
+    m_command_definitions = known_commands;
+    m_command_definitions_size = known_commands_size;
+    m_default_executor = default_command;
+    m_application_context = application_context;
+
     ret_code_t error_code = NRF_SUCCESS;
 
     ble_uuid_t service_uuid = { . uuid = ESTC_SERVICE_UUID, };
@@ -99,11 +151,9 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service, COMMAND_DEFINITION
     NRF_LOG_INFO("%s:%d | Service UUID type: 0x%02x", __FUNCTION__, __LINE__, service_uuid.type);
     NRF_LOG_INFO("%s:%d | Service handle: 0x%04x", __FUNCTION__, __LINE__, service->service_handle);
 
-    m_command_definitions = known_commands;
-    m_command_definitions_size = known_commands_size;
-    m_default_executor = default_command;
-    m_application_context = application_context;
-
+    
+    m_service_instance = service;
+    init_processing_timers();
     return estc_ble_add_characteristics(service);
 }
 
@@ -128,9 +178,11 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 {
     ret_code_t error_code = NRF_SUCCESS;
  
-    error_code = estc_ble_add_notifications_characteristic(service);
+    error_code = estc_ble_add_current_color_characteristic(service);
     APP_ERROR_CHECK(error_code);
-    error_code = estc_ble_add_timer_dependent_characteristic(service);
+    error_code = estc_ble_add_power_state_characteristic(service);
+    APP_ERROR_CHECK(error_code);
+    error_code = estc_ble_add_command_characteristic(service);
     APP_ERROR_CHECK(error_code);
 
     return error_code;
@@ -183,7 +235,7 @@ static ret_code_t estc_ble_add_characteristic(
         memcpy(p_user_buffer, p_init_value, value_len);
         attr_md.vloc              = BLE_GATTS_VLOC_USER;
         attr_char_value.p_value   = p_user_buffer;
-        attr_char_value.max_len   = BLE_GATTS_FIX_ATTR_LEN_MAX;
+        attr_char_value.max_len   = value_len;
     }
     else
     {
@@ -207,68 +259,106 @@ static ret_code_t estc_ble_add_characteristic(
     return error_code;
 }
 
-
-static ret_code_t estc_ble_add_notifications_characteristic(ble_estc_service_t *service)
+static ble_gatts_value_t set_response()
 {
-    static const uint8_t init[]  = { 0xAA, 0xBB, 0xCC };
-    static const uint8_t desc[]  = "Значение характеристики 1";
+    m_response_data.status = *m_application_context->ble_command_status;
+    memcpy(m_response_data.command, m_write_data, m_write_data_len);
+    ble_gatts_value_t gatts_value = {0};
+    gatts_value.len = sizeof(m_response_data);
+    gatts_value.offset = 0;
+    gatts_value.p_value = (uint8_t*)&m_response_data;
+    return gatts_value;
+}
 
+static ret_code_t estc_ble_add_current_color_characteristic(ble_estc_service_t *service)
+{
+    static const uint8_t desc[]  = "Текущая характеристика цвета, которая обновляется при получении команды. Уведомление отправляется при каждом обновлении характеристики.";
+
+    set_response();
     return estc_ble_add_characteristic(
         service,
         ESTC_GATT_CHAR_1_UUID,
-        //permissions
-        true, true,
+             //permissions: read, write, notify, indicate
         true, false,
-        m_ram_local_buffer, init, sizeof(init),
+        true, false,
+        (uint8_t*)m_application_context->current_color_description, (uint8_t*)m_application_context->current_color_description, sizeof(*m_application_context->current_color_description),
         desc, sizeof(desc) - 1,
-        &service->characteristic_with_notification_handle);
+        &service->current_color_characteristic_handle);
 }
 
-static ret_code_t estc_ble_add_timer_dependent_characteristic(ble_estc_service_t *service)
+static ret_code_t estc_ble_add_power_state_characteristic(ble_estc_service_t *service)
 {
     static const uint8_t init    = 112;
-    static const uint8_t desc[]  = "Значение характеристики с индицкацией";
+    static const uint8_t desc[]  = "Текущее состояние свтеодиода(*влкючен или выключен*)";
 
     return estc_ble_add_characteristic(
         service,
         ESTC_GATT_CHAR_2_UUID,
-        //permissions
-        true, false,
+        //permissions: read, write, notify, indicate
+        true, true,
         false, true,
         NULL, &init, sizeof(init),
         desc, sizeof(desc) - 1,
-        &service->characteristic_timer_dependent_handle);
+        &service->power_state_characteristic_handle);
+}
+
+static ret_code_t estc_ble_add_command_characteristic(ble_estc_service_t *service)
+{
+    static const uint8_t desc[]  = "Характеристика для записи команд";
+
+    return estc_ble_add_characteristic(
+        service,
+        ESTC_GATT_CHAR_3_UUID,
+        //permissions: read, write, notify, indicate
+        true, true,
+        false, false,
+        (uint8_t*)&m_response_data, (uint8_t*)&m_response_data, sizeof(m_response_data),
+        desc, sizeof(desc) - 1,
+        &service->command_characteristic_handle);
 }
 
 
-void estc_update_characteristic_1_value(ble_estc_service_t *service, uint8_t *value)
-{
-    ble_gatts_value_t gatts_value = {0};
-    gatts_value.len = sizeof(uint8_t);
-    gatts_value.offset = 0;
-    gatts_value.p_value = value;
+// void estc_update_current_color_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write)
+// {       
+//     NRF_LOG_INFO("Len of the value is: %d", write->len);
+//     if (*m_application_context->ble_command_status != BLE_COMMAND_IN_PROCESS)
+//     {
+//         *m_application_context->ble_command_status = BLE_COMMAND_IN_PROCESS;
+//         memcpy(m_write_data, write->data, write->len);
+//         m_write_data_len = write->len;
+//         ret_code_t err_code = app_timer_start(processing_start_timer, APP_TIMER_TICKS(100), NULL);
+//         NRF_LOG_INFO("Timer start error code: %d", err_code);
+//     }
 
-    
-    NRF_LOG_INFO("Will try to update value: %d", *value);
-    NRF_LOG_INFO("Will try to update value: %d", *(value + 1));
-    NRF_LOG_INFO("Will try to update value: %d", *(value + 2));
-    // if (!m_is_processing)
-    // {
-    //     app_timer_start(processing_start_timer, APP_TIMER_TICKS(100), NULL);
-    // }
-    // else { send processing status to client}
-    ret_code_t error_code = sd_ble_gatts_value_set(service->connection_handle, service->characteristic_with_notification_handle.value_handle, &gatts_value);
+//     ble_gatts_value_t gatts_value = set_response();
+//     ret_code_t error_code = sd_ble_gatts_value_set(m_service_instance->connection_handle, m_service_instance->command_characteristic_handle.value_handle, &gatts_value);
+//     APP_ERROR_CHECK(error_code);
+// }
+
+void estc_process_command(ble_estc_service_t *service, const ble_gatts_evt_write_t *write)
+{
+    if (*m_application_context->ble_command_status != BLE_COMMAND_IN_PROCESS)
+    {
+        *m_application_context->ble_command_status = BLE_COMMAND_IN_PROCESS;
+        memcpy(m_write_data, write->data, write->len);
+        m_write_data_len = write->len;
+        ret_code_t err_code = app_timer_start(processing_start_timer, APP_TIMER_TICKS(100), NULL);
+        NRF_LOG_INFO("Timer start error code: %d", err_code);
+    }
+
+    ble_gatts_value_t gatts_value = set_response();
+    ret_code_t error_code = sd_ble_gatts_value_set(m_service_instance->connection_handle, m_service_instance->command_characteristic_handle.value_handle, &gatts_value);
     APP_ERROR_CHECK(error_code);
 }
 
-void estc_update_timer_dependent_characteristic_value(ble_estc_service_t *service, uint8_t *value)
+void estc_update_power_state_characteristic_value(ble_estc_service_t *service, uint8_t *value)
 {
     ble_gatts_value_t gatts_value = {0};
     gatts_value.len = sizeof(uint8_t);
     gatts_value.offset = 0;
     gatts_value.p_value = value;
 
-    ret_code_t error_code = sd_ble_gatts_value_set(service->connection_handle, service->characteristic_timer_dependent_handle.value_handle, &gatts_value);
+    ret_code_t error_code = sd_ble_gatts_value_set(service->connection_handle, service->power_state_characteristic_handle.value_handle, &gatts_value);
 
     APP_ERROR_CHECK(error_code);
 }

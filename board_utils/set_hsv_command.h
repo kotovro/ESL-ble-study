@@ -1,6 +1,6 @@
 #include "command_utils.h"
 
-void set_hsv_executor(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8_t data_len)
+int set_hsv_executor(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8_t data_len)
 {
     char msg[100];
     COLOR_HSV color = 
@@ -13,10 +13,15 @@ void set_hsv_executor(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8
     int cur_pos = 0;
     bool is_binary_arg = ((data != NULL) && (data_len == 4));
     bool is_args_valid = (((args != NULL) && (strlen(args) > 0)) || is_binary_arg);
+    
+    NRF_LOG_INFO("data isn;t null=%d", data != NULL);
+    NRF_LOG_INFO("data len is=%d", data_len);
+   
     if (is_args_valid){
         if (is_binary_arg) 
         {
-            color.h = (uint16_t)(data[0] << 8 | data[1]);
+            NRF_LOG_INFO("H=%u, S=%u, V=%u", color.h, color.s, color.v);
+            color.h = (uint16_t)data[0] | (uint16_t)(data[1] << 8);
             color.s = data[2];
             color.v = data[3];
         } else {
@@ -58,6 +63,7 @@ void set_hsv_executor(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8
 
     if (is_args_valid)
     {
+        context->current_color_description->colorType = 1; // HSV
         context->current_color_description->first_component = color.h;
         context->current_color_description->second_component = color.s;
         context->current_color_description->third_component = color.v;
@@ -65,16 +71,22 @@ void set_hsv_executor(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8
         snprintf(msg, sizeof(msg),
                 "Color set to: H=%u, S=%u, V=%u\r\n", color.h, color.s, color.v);
 
-        usb_serial_dumb_print(msg, strlen(msg));
+        if (is_binary_arg) {
+            NRF_LOG_INFO("Color set to: H=%u, S=%u, V=%u", color.h, color.s, color.v);
+        } else {
+            usb_serial_dumb_print(msg, strlen(msg));
+        }
+        return 0;
     }
     else 
     {
         unknown_command_executor(args, context, data, data_len);
         if (is_binary_arg) {
-            NRF_LOG_INFO("Invalid set hsv binary arguments detected");
+            NRF_LOG_INFO("Invalid set hsv binary arguments detected: H=%u, S=%u, V=%u", color.h, color.s, color.v);
         } else {
             NRF_LOG_INFO("Invalid set hsv arguments detected: %s", args);
         }
+        return -1;
     }
     
 }

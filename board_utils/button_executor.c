@@ -83,4 +83,5 @@ void double_click_executor()
         *(m_application_context->mode_global) = SLEEP;
         // save_current_color(NULL, m_application_context);
     }
+    show_color(m_application_context->current_color_description);
 }

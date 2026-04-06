@@ -86,7 +86,7 @@
 
 
 // APP_TIMER_DEF(m_indication_timer_id);
-APP_TIMER_DEF(m_notification_timer_id);                                                          
+// APP_TIMER_DEF(m_notification_timer_id);                                                          
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);         
 BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
@@ -98,10 +98,11 @@ int mode_global = SLEEP;
 COLOR_DESCRIPTION color_palette[AVAILABLE_COLOR_SLOTS];
 SETTINGS settings;
 COLOR_DESCRIPTION color_description = {1, "LOL\0", 22, 100, 100};
-COMMAND_CONTEXT application_context = {&mode_global, color_palette, &color_description, &settings, &hue_d, &saturation_d, &value_d};
+uint8_t ble_command_status = BLE_COMMAND_SUCCESS; 
+COMMAND_CONTEXT application_context = {&mode_global, color_palette, &color_description, &settings, &hue_d, &saturation_d, &value_d, &ble_command_status};
 
 /// simplest option is to increment this value anf then write it
-static uint8_t variable_changed_on_indication = 0;
+// static uint8_t variable_changed_on_indication = 0;
 
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
 {
@@ -151,47 +152,48 @@ static void buttons_init(void)
  *
  * @details Increments the indication variable and sends indication with the new value. This function will be called each time the timer expires.
  */
-void estc_indicate_update_on_timer(void *context)
-{
-    variable_changed_on_indication++;    
+// void estc_indicate_update_on_timer(void *context)
+// {
+//     variable_changed_on_indication++;    
 
 
-    estc_update_timer_dependent_characteristic_value(
-        &m_estc_service,
-        &variable_changed_on_indication);
-    if (!m_indication_enabled && m_indication_pending)
-        return;
-    // NRF_LOG_INFO("Will try to update value: %d", variable_changed_on_indication);
+//     estc_update_timer_dependent_characteristic_value(
+//         &m_estc_service,
+//         &variable_changed_on_indication);
+//     if (!m_indication_enabled && m_indication_pending)
+//         return;
+//     // NRF_LOG_INFO("Will try to update value: %d", variable_changed_on_indication);
 
 
-    // NRF_LOG_INFO("Will try to indicate value: %d", variable_changed_on_indication);
-    ret_code_t err = send_indication(
-        m_estc_service.connection_handle,
-        m_estc_service.characteristic_timer_dependent_handle.value_handle,
-        &variable_changed_on_indication);
-    if (err != NRF_SUCCESS)
-    {
-        m_indication_pending = true;
-    }
-}
+//     // NRF_LOG_INFO("Will try to indicate value: %d", variable_changed_on_indication);
+//     ret_code_t err = send_indication(
+//         m_estc_service.connection_handle,
+//         m_estc_service.characteristic_timer_dependent_handle.value_handle,
+//         &variable_changed_on_indication);
+//     if (err != NRF_SUCCESS)
+//     {
+//         m_indication_pending = true;
+//     }
+// }
 
-static uint8_t notification_value = 0; 
-void estc_notify_update_on_timer(void *context)
-{
-    notification_value++;
-    estc_update_characteristic_1_value(
-        &m_estc_service,
-        (uint8_t *)&notification_value);
+// static uint8_t notification_value = 0; 
+// void estc_notify_update_on_timer(void *context)
+// {
+//     // notification_value++;
+//     // estc_update_characteristic_1_value(
+//     //     &m_estc_service,
+//     //     (uint8_t *)&notification_value);
 
-    if (!m_notification_enabled)
-        return;
+//     if (!m_notification_enabled)
+//         return;
 
-    ret_code_t err = send_notitification(
-        m_estc_service.connection_handle,
-        m_estc_service.characteristic_with_notification_handle.value_handle,
-        (uint8_t *)&notification_value);
-    APP_ERROR_CHECK(err);
-}
+
+//     ret_code_t err = send_notitification(
+//         m_estc_service.connection_handle,
+//         m_estc_service.current_color_characteristic_handle.value_handle,
+//         (uint8_t *)&notification_value);
+//     APP_ERROR_CHECK(err);
+// }
 
 /**@brief Function for the Timer initialization.
  *
@@ -205,7 +207,7 @@ static void ble_timers_init(void)
     // err_code = app_timer_create(&m_indication_timer_id, APP_TIMER_MODE_REPEATED, estc_indicate_update_on_timer);
     // APP_ERROR_CHECK(err_code);
 
-    err_code = app_timer_create(&m_notification_timer_id, APP_TIMER_MODE_REPEATED, estc_notify_update_on_timer);
+    // err_code = app_timer_create(&m_notification_timer_id, APP_TIMER_MODE_REPEATED, estc_notify_update_on_timer);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -244,7 +246,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             APP_ERROR_CHECK(err_code);
             err_code = app_button_enable();
             APP_ERROR_CHECK(err_code);
-            app_timer_start(m_notification_timer_id, APP_TIMER_TICKS(NOTIFICATION_FREQUENCY_MS), NULL);
+            // app_timer_start(m_notification_timer_id, APP_TIMER_TICKS(NOTIFICATION_FREQUENCY_MS), NULL);
             // app_timer_start(m_indication_timer_id, APP_TIMER_TICKS(INDICATION_FREQUENCY_MS), NULL);   
 
             break;
@@ -254,7 +256,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             // bsp_board_led_off(CONNECTED_LED);
             pattern_slow_blinking();
             m_estc_service.connection_handle = BLE_CONN_HANDLE_INVALID;
-            app_timer_stop(m_notification_timer_id);
+            // app_timer_stop(m_notification_timer_id);
             // app_timer_stop(m_indication_timer_id);
             m_indication_enabled = false;
             m_notification_enabled = false;
@@ -267,22 +269,24 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             const ble_gatts_evt_write_t *write = &p_ble_evt->evt.gatts_evt.params.write;
             
             // NRF_LOG_INFO("Received write event, data: %d", m_estc_service.characteristic_timer_dependent_handle.cccd_handle);
-            if (write->handle == m_estc_service.characteristic_with_notification_handle.value_handle)
+            if (write->handle == m_estc_service.command_characteristic_handle.value_handle)
             {
-                estc_update_characteristic_1_value(&m_estc_service, (uint8_t *)write->data); 
+                NRF_LOG_INFO("Received write event");
+                estc_process_command(&m_estc_service, write); 
                 NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->len);
                 if (m_notification_enabled)
                 {
-                    err_code = send_notitification(m_estc_service.connection_handle, m_estc_service.characteristic_with_notification_handle.value_handle, write->data);
+                    err_code = send_notitification(m_estc_service.connection_handle, m_estc_service.current_color_characteristic_handle.value_handle, write->data);
                     APP_ERROR_CHECK(err_code);
                 }
             }
-            else if (write->handle == m_estc_service.characteristic_with_notification_handle.cccd_handle)
+            else if (write->handle == m_estc_service.power_state_characteristic_handle.cccd_handle)
             {
+                //value_hanlde
                 const uint8_t *cccd = p_ble_evt->evt.gatts_evt.params.write.data;
                 m_notification_enabled = ble_srv_is_notification_enabled(cccd);
             }
-            else if (write->handle == m_estc_service.characteristic_timer_dependent_handle.cccd_handle)
+            else if (write->handle == m_estc_service.current_color_characteristic_handle.cccd_handle)
             {
                 const uint8_t *cccd = p_ble_evt->evt.gatts_evt.params.write.data;
                 m_indication_enabled = ble_srv_is_indication_enabled(cccd);
