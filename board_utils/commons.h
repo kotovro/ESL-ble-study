@@ -29,7 +29,7 @@
 #define PICKING_HUE         1
 #define PICKING_SATURATION  2
 #define PICKING_VALUE       3
-// #define POWER_OFF           4
+#define POWER_OFF           4
 
 // --- Color ---
 #define COLOR_CHANGE_MS    100
@@ -50,6 +50,7 @@
 #define BLE_COMMAND_SUCCESS 0
 #define BLE_COMMAND_IN_PROCESS 1
 #define BLE_COMMAND_NOT_RECOGNIZED 2
+#define BLE_COMMAND_BUSY 3
 
 
 typedef struct {
@@ -90,7 +91,6 @@ typedef struct
     bool * hue_d;
     bool * saturation_d;
     bool * value_d;
-    uint8_t* ble_command_status;
 } COMMAND_CONTEXT;
 
 
@@ -116,4 +116,5 @@ typedef struct
 #define CDC_ACM_DATA_EPOUT      NRF_DRV_USBD_EPOUT4
 #define READ_SIZE               1
 #define MAX_COMMAND_SIZE        100
+#define MAX_BLE_COMMAND_LENGTH  20
 #endif // CONFIG_H

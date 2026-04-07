@@ -82,6 +82,8 @@
 #include "unknown_command.h"
 #include "set_rgb_command.h"
 #include "set_hsv_command.h"
+#include "power_off_command.h"
+#include "power_on_command.h"
 #include "help_command.h"
 
 
@@ -98,8 +100,7 @@ int mode_global = SLEEP;
 COLOR_DESCRIPTION color_palette[AVAILABLE_COLOR_SLOTS];
 SETTINGS settings;
 COLOR_DESCRIPTION color_description = {1, "LOL\0", 22, 100, 100};
-uint8_t ble_command_status = BLE_COMMAND_SUCCESS; 
-COMMAND_CONTEXT application_context = {&mode_global, color_palette, &color_description, &settings, &hue_d, &saturation_d, &value_d, &ble_command_status};
+COMMAND_CONTEXT application_context = {&mode_global, color_palette, &color_description, &settings, &hue_d, &saturation_d, &value_d};
 
 /// simplest option is to increment this value anf then write it
 // static uint8_t variable_changed_on_indication = 0;
@@ -274,23 +275,12 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                 NRF_LOG_INFO("Received write event");
                 estc_process_command(&m_estc_service, write); 
                 NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->len);
-                if (m_notification_enabled)
-                {
-                    err_code = send_notitification(m_estc_service.connection_handle, m_estc_service.current_color_characteristic_handle.value_handle, write->data);
-                    APP_ERROR_CHECK(err_code);
-                }
+                
             }
-            else if (write->handle == m_estc_service.power_state_characteristic_handle.cccd_handle)
-            {
-                //value_hanlde
-                const uint8_t *cccd = p_ble_evt->evt.gatts_evt.params.write.data;
-                m_notification_enabled = ble_srv_is_notification_enabled(cccd);
-            }
-            else if (write->handle == m_estc_service.current_color_characteristic_handle.cccd_handle)
-            {
-                const uint8_t *cccd = p_ble_evt->evt.gatts_evt.params.write.data;
-                m_indication_enabled = ble_srv_is_indication_enabled(cccd);
-            }
+            // else if (write->handle == m_estc_service.command_characteristic_handle.value_handle)
+            // {
+            //     estc_update_power_state_characteristic_value(&m_estc_service, write);
+            // }
         }
         break;
 
@@ -407,7 +397,9 @@ void fill_command_definitions()
     init_command_definitions();
     command_definitions[0] = set_rgb_command;
     command_definitions[1] = set_hsv_command;
-    command_definitions[2] = help_command;
+    command_definitions[2] = power_off_command;
+    command_definitions[3] = power_on_command;
+    command_definitions[4] = help_command;
 }
 
 

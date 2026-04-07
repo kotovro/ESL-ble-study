@@ -68,10 +68,10 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service, COMMAND_DEFINITION
 
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
 
-void estc_update_current_color_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write);
+// void estc_update_current_color_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write);
 
 void estc_process_command(ble_estc_service_t *service, const ble_gatts_evt_write_t *write);
 
-void estc_update_power_state_characteristic_value(ble_estc_service_t *service, uint8_t *value); 
+// void estc_update_power_state_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write); 
 
 #endif /* ESTC_SERVICE_H__ */

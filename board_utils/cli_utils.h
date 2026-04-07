@@ -13,6 +13,8 @@
 // #define CMD_LIST_COLORS 6
 // #define CMD_SAVE_COLORS 7
 // #define CMD_SAVE_CURRENT_COLOR 8
+#define CMD_POWER_OFF 3 
+#define CMD_POWER_ON 4 
 #define CMD_UNKNOWN 255 
 #define ERROR_MESSAGE "Unknown command\r\n"
     

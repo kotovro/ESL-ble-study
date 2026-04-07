@@ -15,6 +15,10 @@ void button_press_executor()
     {
         return; // Not in HSV mode
     }
+    if (*(m_application_context->mode_global) == POWER_OFF)
+    {
+        *(m_application_context->mode_global) = SLEEP;
+    } 
 
     if (*(m_application_context->mode_global) == PICKING_HUE) {
         if (*(m_application_context->hue_d) == INCREASE) {

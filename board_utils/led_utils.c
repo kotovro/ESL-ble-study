@@ -93,15 +93,15 @@ void show_rgb_color(COLOR_RGB color)
             led_seq[i].channel_3 = 0;
         }
     }
-    // else if (*(m_application_context->mode_global) == POWER_OFF)
-    // {
-    //     for (int i = 0; i < FADE_STEPS; ++i) 
-    //     {
-    //         led_seq[i].channel_1 = 0;
-    //         led_seq[i].channel_2 = 0;
-    //         led_seq[i].channel_3 = 0;
-    //     }
-    // }
+    else if (*(m_application_context->mode_global) == POWER_OFF)
+    {
+        for (int i = 0; i < FADE_STEPS; ++i) 
+        {
+            led_seq[i].channel_1 = 0;
+            led_seq[i].channel_2 = 0;
+            led_seq[i].channel_3 = 0;
+        }
+    }
 }
 
 // -------------------- PWM LED control --------------------
