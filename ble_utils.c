@@ -2,16 +2,212 @@
 #include <string.h>
 
 #include "app_config.h"
-
-#include "app_error.h"
-#include "app_timer.h"
-#include "ble_gatts.h"
-#include "bsp_btn_ble.h"
+#include "nordic_common.h"
+#include "nrf.h"
+#include "ble.h"
+#include "ble_hci.h"
+#include "ble_srv_common.h"
+#include "ble_advdata.h"
+#include "ble_advertising.h"
 #include "ble_conn_params.h"
+#include "nrf_sdh.h"
+#include "nrf_sdh_soc.h"
+#include "nrf_sdh_ble.h"
+#include "fds.h"
+#include "peer_manager.h"
+#include "peer_manager_handler.h"
+#include "sensorsim.h"
+#include "ble_conn_state.h"
+#include "nrf_pwr_mgmt.h"
+#include "app_error.h"
+#include "ble_gatts.h"
+#include "nrf_ble_gatt.h"
+#include "nrf_ble_qwr.h"
+
 
 #include "ble_utils.h"
+#include "cli_utils.h" 
+#include "board_utils.h"
 
+NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
+NRF_BLE_QWR_DEF(m_qwr);         
+BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
 uint16_t* connection_handle;
+
+static bool m_indication_enabled = false;
+static bool m_notification_enabled = false;
+static bool m_indication_pending = false;
+
+ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
+static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
+{
+    {BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE},
+    {ESTC_SERVICE_UUID, BLE_UUID_TYPE_BLE},
+};
+/**@brief Function for handling BLE events.
+ *
+ * @param[in]   p_ble_evt   Bluetooth stack event.
+ * @param[in]   p_context   Unused.
+ */
+static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
+{
+    ret_code_t err_code;
+    switch (p_ble_evt->header.evt_id)
+    {
+        case BLE_GAP_EVT_CONNECTED:
+            NRF_LOG_INFO("Connected");
+            // bsp_board_led_on(CONNECTED_LED);
+            // bsp_board_led_off(ADVERTISING_LED);
+            pattern_on();
+            m_estc_service.connection_handle = p_ble_evt->evt.gap_evt.conn_handle;
+            err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_estc_service.connection_handle);
+            APP_ERROR_CHECK(err_code);
+            // app_timer_start(m_notification_timer_id, APP_TIMER_TICKS(NOTIFICATION_FREQUENCY_MS), NULL);
+            // app_timer_start(m_indication_timer_id, APP_TIMER_TICKS(INDICATION_FREQUENCY_MS), NULL);   
+
+            break;
+
+        case BLE_GAP_EVT_DISCONNECTED:
+            NRF_LOG_INFO("Disconnected");
+            // bsp_board_led_off(CONNECTED_LED);
+            pattern_slow_blinking();
+            m_estc_service.connection_handle = BLE_CONN_HANDLE_INVALID;
+            // app_timer_stop(m_notification_timer_id);
+            // app_timer_stop(m_indication_timer_id);
+            m_indication_enabled = false;
+            m_notification_enabled = false;
+            advertising_start(pattern_slow_blinking);
+            
+            break;
+
+        case BLE_GATTS_EVT_WRITE:
+        {
+            const ble_gatts_evt_write_t *write = &p_ble_evt->evt.gatts_evt.params.write;
+            
+            // NRF_LOG_INFO("Received write event, data: %d", m_estc_service.characteristic_timer_dependent_handle.cccd_handle);
+            if (write->handle == m_estc_service.command_characteristic_handle.value_handle)
+            {
+                NRF_LOG_INFO("Received write event");
+                estc_process_command(&m_estc_service, write); 
+                NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->len);
+                
+            }
+            // else if (write->handle == m_estc_service.command_characteristic_handle.value_handle)
+            // {
+            //     estc_update_power_state_characteristic_value(&m_estc_service, write);
+            // }
+        }
+        break;
+
+        case BLE_GATTS_EVT_HVC:
+                m_indication_pending = false;
+            break;
+        // case BLE_GATTS_EVT_HVN_TX_COMPLETE:
+        //     m_indication_pending = false;
+        //     break;
+        
+        case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
+        {
+            ble_gap_sec_params_t sec_params = { 0 };
+            sec_params.bond    = 0;
+            sec_params.mitm    = 0;
+            sec_params.io_caps = BLE_GAP_IO_CAPS_NONE;
+            sec_params.min_key_size = BLE_NFC_SEC_PARAM_MIN_KEY_SIZE;
+            sec_params.max_key_size = BLE_NFC_SEC_PARAM_MAX_KEY_SIZE;
+
+            err_code = sd_ble_gap_sec_params_reply(
+                p_ble_evt->evt.gap_evt.conn_handle,
+                BLE_GAP_SEC_STATUS_SUCCESS,
+                &sec_params,
+                NULL);
+            APP_ERROR_CHECK(err_code);
+            break;    
+        }
+        // // Pairing not supported
+            // err_code = sd_ble_gap_sec_params_reply(m_estc_service.connection_handle,
+            //                                        BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP,
+            //                                        NULL,
+            //                                        NULL);
+            // APP_ERROR_CHECK(err_code);
+            // break;
+
+        case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
+        {
+            NRF_LOG_DEBUG("PHY update request.");
+            ble_gap_phys_t const phys =
+            {
+                .rx_phys = BLE_GAP_PHY_AUTO,
+                .tx_phys = BLE_GAP_PHY_AUTO,
+            };
+            err_code = sd_ble_gap_phy_update(p_ble_evt->evt.gap_evt.conn_handle, &phys);
+            APP_ERROR_CHECK(err_code);
+        } break;
+
+        case BLE_GATTS_EVT_SYS_ATTR_MISSING:
+            // No system attributes have been stored.
+            err_code = sd_ble_gatts_sys_attr_set(m_estc_service.connection_handle, NULL, 0, 0);
+            APP_ERROR_CHECK(err_code);
+            break;
+
+        case BLE_GATTC_EVT_TIMEOUT:
+            // Disconnect on GATT Client timeout event.
+            NRF_LOG_DEBUG("GATT Client Timeout.");
+            err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gattc_evt.conn_handle,
+                                             BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+            APP_ERROR_CHECK(err_code);
+            break;
+
+        case BLE_GATTS_EVT_TIMEOUT:
+            // Disconnect on GATT Server timeout event.
+            NRF_LOG_DEBUG("GATT Server Timeout.");
+            err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gatts_evt.conn_handle,
+                                             BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+            APP_ERROR_CHECK(err_code);
+            break;
+        
+        default:
+            NRF_LOG_INFO("Unhandled BLE event: 0x%04x", p_ble_evt->header.evt_id);
+            // No implementation needed.
+            break;
+    }
+}
+
+void ble_init(COMMAND_DEFINITION* command_definitions, size_t command_definitions_size, Command_Executor default_command_executor, COMMAND_CONTEXT* application_context)
+{
+    ble_stack_init();
+    gap_params_init();
+    gatt_init(&m_gatt);
+    services_init(&m_qwr, &m_estc_service, command_definitions, command_definitions_size,
+                default_command_executor, application_context);
+    advertising_init(m_adv_uuids, on_adv_evt, &m_advertising);
+    conn_params_init(&m_estc_service.connection_handle);
+}
+
+/**@brief Function for initializing the BLE stack.
+ *
+ * @details Initializes the SoftDevice and the BLE event interrupt.
+ */
+void ble_stack_init()
+{
+    ret_code_t err_code;
+
+    err_code = nrf_sdh_enable_request();
+    APP_ERROR_CHECK(err_code);
+
+    // Configure the BLE stack using the default settings.
+    // Fetch the start address of the application RAM.
+    uint32_t ram_start = 0;
+    err_code = nrf_sdh_ble_default_cfg_set(APP_BLE_CONN_CFG_TAG, &ram_start);
+    APP_ERROR_CHECK(err_code);
+
+    // Enable BLE stack.
+    err_code = nrf_sdh_ble_enable(&ram_start);
+    APP_ERROR_CHECK(err_code);
+
+    // Register a handler for BLE events.
+    NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
+}
+
 
 uint32_t send_notitification(uint16_t conn_handle, uint16_t char_value_handle, const uint8_t *data) 
 {
@@ -87,10 +283,6 @@ void gatt_init(nrf_ble_gatt_t* gatt)
 void sleep_mode_enter(void)
 {
     ret_code_t err_code;
-
-    err_code = bsp_indication_set(BSP_INDICATE_IDLE);
-    APP_ERROR_CHECK(err_code);
-
     // Go to system-off mode (this function will not return; wakeup will cause a reset).
     err_code = sd_power_system_off();
     APP_ERROR_CHECK(err_code);
@@ -104,14 +296,10 @@ void sleep_mode_enter(void)
  */
 void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 {
-    ret_code_t err_code;
-
     switch (ble_adv_evt)
     {
         case BLE_ADV_EVT_FAST:
             NRF_LOG_INFO("ADV Event: Start fast advertising");
-            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-            APP_ERROR_CHECK(err_code);
             break;
 
         case BLE_ADV_EVT_IDLE:
@@ -244,4 +432,17 @@ void conn_params_init(uint16_t* conn_handle)
 
     err_code = ble_conn_params_init(&cp_init);
     APP_ERROR_CHECK(err_code);
+}
+
+/**@brief Function for starting advertising.
+ */
+void advertising_start(indicate_function_t indicate_function)
+{
+    ret_code_t           err_code;
+
+    err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
+    // err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG); - low-level call of gap
+    APP_ERROR_CHECK(err_code);
+
+    if (indicate_function != NULL) indicate_function();    
 }

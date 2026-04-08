@@ -22,8 +22,28 @@ void services_init(nrf_ble_qwr_t* qwr, ble_estc_service_t* estc_service, COMMAND
 void conn_params_init(uint16_t* conn_handle);
 
 typedef void (*Adv_evt_handler_t)(ble_adv_evt_t);
+typedef void (*indicate_function_t)(void);
+
+typedef struct  {
+    bool is_notification_enabled;
+    bool is_indication_enabled;
+} ble_characteristic_subscription_status_t;
+
+
+typedef struct  {
+    ble_advertising_t* advertising;
+    ble_estc_service_t* estc_service;
+    ble_characteristic_subscription_status_t current_color_characteristic_subscription_status;
+    ble_characteristic_subscription_status_t command_characteristic_subscription_status;
+    ble_characteristic_subscription_status_t power_state_characteristic_subscription_status;
+} ble_context_t;
+
+
 
 void advertising_init(ble_uuid_t* adv_uuids, Adv_evt_handler_t adv_evt_handler, ble_advertising_t* advertising);
+void advertising_start(indicate_function_t indicate_function);
+void ble_stack_init();
+void ble_init(COMMAND_DEFINITION* command_definitions, size_t command_definitions_size, Command_Executor default_command_executor, COMMAND_CONTEXT* application_context);
 
 
 #endif /* BlE_UTILS_H__ */
