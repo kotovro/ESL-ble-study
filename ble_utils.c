@@ -38,7 +38,9 @@ static bool m_indication_enabled = false;
 static bool m_notification_enabled = false;
 static bool m_indication_pending = false;
 
+
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
+ble_context_t m_ble_context;
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
 {
     {BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE},
@@ -92,10 +94,18 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                 NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->len);
                 
             }
-            // else if (write->handle == m_estc_service.command_characteristic_handle.value_handle)
-            // {
-            //     estc_update_power_state_characteristic_value(&m_estc_service, write);
-            // }
+            else 
+            {
+                for (int i = 0; i < 3; ++i)
+                {
+                    if (write->handle == m_ble_context.characteristics_subscription_status[i].characteristic_handle->cccd_handle)
+                    {
+                        const uint8_t *cccd = p_ble_evt->evt.gatts_evt.params.write.data;
+                        m_ble_context.characteristics_subscription_status[i].is_notification_enabled = ble_srv_is_notification_enabled(cccd);
+                        m_ble_context.characteristics_subscription_status[i].is_indication_enabled = ble_srv_is_indication_enabled(cccd);
+                    }
+                }
+            }
         }
         break;
 
@@ -374,8 +384,20 @@ void services_init(nrf_ble_qwr_t* qwr, ble_estc_service_t* estc_service, COMMAND
     err_code = nrf_ble_qwr_init(qwr, &qwr_init);
     APP_ERROR_CHECK(err_code);
 
-    err_code = estc_ble_service_init(estc_service, known_commands, known_commands_size, default_command, application_context);
+    
+    m_ble_context.characteristics_subscription_status[0].characteristic_handle = &m_estc_service.command_characteristic_handle;
+    m_ble_context.characteristics_subscription_status[1].characteristic_handle = &m_estc_service.current_color_characteristic_handle;
+    m_ble_context.characteristics_subscription_status[2].characteristic_handle = &m_estc_service.power_state_characteristic_handle;
+    for (int i = 0; i < 3; ++i)
+    {
+        m_ble_context.characteristics_subscription_status[i].is_indication_enabled = false;
+        m_ble_context.characteristics_subscription_status[i].is_notification_enabled = false;
+    }
+
+    err_code = estc_ble_service_init(estc_service, known_commands, known_commands_size, default_command, application_context, &m_ble_context);
     APP_ERROR_CHECK(err_code);
+
+    
 }
 
 /**@brief Function for handling the Connection Parameters Module.

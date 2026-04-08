@@ -51,6 +51,7 @@
 
 
 
+
 typedef struct
 {
     uint16_t type_handle;
@@ -61,10 +62,23 @@ typedef struct
     ble_gatts_char_handles_t command_characteristic_handle;
 } ble_estc_service_t;
 
+
+typedef struct  {
+    ble_gatts_char_handles_t* characteristic_handle;
+    bool is_notification_enabled;
+    bool is_indication_enabled;
+} ble_characteristic_subscription_status_t;
+
+typedef struct  {
+    ble_estc_service_t* estc_service;
+    ble_characteristic_subscription_status_t characteristics_subscription_status[3];
+} ble_context_t;
+
+
 volatile static bool m_is_processing; 
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service, COMMAND_DEFINITION* known_commands, size_t known_commands_size,
-                Command_Executor default_command, COMMAND_CONTEXT* application_context);
+                Command_Executor default_command, COMMAND_CONTEXT* application_context, ble_context_t* ble_context);
 
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
 

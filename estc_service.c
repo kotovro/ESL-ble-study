@@ -53,53 +53,46 @@ static COMMAND_CONTEXT* m_application_context;
 static RESPONSE m_response_data; 
 static RESPONSE m_current_command_data; 
 static ble_estc_service_t* m_service_instance;
-
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service);
 static ret_code_t estc_ble_add_current_color_characteristic(ble_estc_service_t *service);
 static ret_code_t estc_ble_add_power_state_characteristic(ble_estc_service_t *service);
 static ret_code_t estc_ble_add_command_characteristic(ble_estc_service_t *service);
+static ble_context_t* m_ble_context;
 
 void send_notification(uint16_t conn_handle, ble_gatts_char_handles_t* char_handle, uint8_t *data, uint16_t data_len)
 {
     NRF_LOG_INFO("Sending notification, data len: %d", data_len);
+    for (int i = 0; i < 3; ++i)
+    {
+        if (m_ble_context->characteristics_subscription_status[i].characteristic_handle == char_handle)
+        { 
+            if (m_ble_context->characteristics_subscription_status[i].is_notification_enabled)
+            {
+                NRF_LOG_INFO("Sending notification, data len: %d", data_len);
+                ble_gatts_hvx_params_t params;
+                memset(&params, 0, sizeof(params));
+                params.type = BLE_GATT_HVX_NOTIFICATION;
+                params.handle = char_handle->value_handle;
+                params.p_data = data;
+                params.p_len = &data_len;
 
-    uint8_t cccd_buf[2] = {0};
+                ret_code_t err_code = sd_ble_gatts_hvx(conn_handle, &params);
+                APP_ERROR_CHECK(err_code);
+            }
+            if (m_ble_context->characteristics_subscription_status[i].is_indication_enabled)
+            {
+                ble_gatts_hvx_params_t params;
+                memset(&params, 0, sizeof(params));
+                params.type = BLE_GATT_HVX_INDICATION;
+                params.handle = char_handle->value_handle;
+                params.p_data = data;
+                params.p_len = &data_len;
 
-    ble_gatts_value_t cccd_value;
-    memset(&cccd_value, 0, sizeof(cccd_value));
-
-    cccd_value.len = sizeof(cccd_buf);
-    cccd_value.offset = 0;
-    cccd_value.p_value = cccd_buf;
-
-    NRF_LOG_INFO("Will try get CCCD value, handle: %d", char_handle->cccd_handle);
-    // NRF_LOG_INFO("value by index 0 in buffer: %d, value by index 1: %d", cccd_buf[0], cccd_buf[1]);
-    // ret_code_t err_code = sd_ble_gatts_value_get(
-    //     conn_handle,
-    //     char_handle->cccd_handle,
-    //     &cccd_value
-    // );
-    // NRF_LOG_INFO("value by index 0 in buffer: %d, value by index 1: %d", cccd_buf[0], cccd_buf[1]);
-    // NRF_LOG_INFO("err code: %d", err_code);
-    // APP_ERROR_CHECK(err_code);
-
-    // uint16_t cccd = uint16_decode(cccd_buf);
-
-    // NRF_LOG_INFO("CCCD value is: %d", cccd);
-    
-    // if (*cccd_value.p_value) 
-    // {
-    //     NRF_LOG_INFO("Sending notification, data len: %d", data_len);
-    //     // ble_gatts_hvx_params_t params;
-    //     // memset(&params, 0, sizeof(params));
-    //     // params.type = BLE_GATT_HVX_NOTIFICATION;
-    //     // params.handle = char_handle->value_handle;
-    //     // params.p_data = data;
-    //     // params.p_len = &data_len;
-
-    //     // ret_code_t err_code = sd_ble_gatts_hvx(conn_handle, &params);
-    //     // APP_ERROR_CHECK(err_code);
-    // }
+                ret_code_t err_code = sd_ble_gatts_hvx(conn_handle, &params);
+                APP_ERROR_CHECK(err_code);
+            }
+        }
+    }
 }
 
 // ///command_context
@@ -184,12 +177,13 @@ void init_processing_timers()
 }
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service, COMMAND_DEFINITION* known_commands, size_t known_commands_size,
-                Command_Executor default_command, COMMAND_CONTEXT* application_context)
+                Command_Executor default_command, COMMAND_CONTEXT* application_context, ble_context_t* ble_context)
 {
     m_command_definitions = known_commands;
     m_command_definitions_size = known_commands_size;
     m_default_executor = default_command;
     m_application_context = application_context;
+    m_ble_context = ble_context;
 
     ret_code_t error_code = NRF_SUCCESS;
 
@@ -407,7 +401,7 @@ void estc_process_command(ble_estc_service_t *service, const ble_gatts_evt_write
 
     ret_code_t error_code = sd_ble_gatts_value_set(m_service_instance->connection_handle, m_service_instance->command_characteristic_handle.value_handle, &gatts_value);
     APP_ERROR_CHECK(error_code);
-    send_notification(m_service_instance->connection_handle, &m_service_instance->current_color_characteristic_handle, (uint8_t*)&m_response_data, sizeof(m_response_data));
+    send_notification(m_service_instance->connection_handle, &m_service_instance->command_characteristic_handle, (uint8_t*)&m_response_data, sizeof(m_response_data));
     // APP_ERROR_CHECK(error_code);
 }
 

@@ -11,6 +11,7 @@
 
 #include "estc_service.h"
 
+
 uint32_t send_notitification(uint16_t conn_handle, uint16_t char_value_handle, const uint8_t *data);
 uint32_t send_indication(uint16_t conn_handle, uint16_t char_value_handle, const uint8_t *data);
 void gap_params_init(void);
@@ -24,19 +25,8 @@ void conn_params_init(uint16_t* conn_handle);
 typedef void (*Adv_evt_handler_t)(ble_adv_evt_t);
 typedef void (*indicate_function_t)(void);
 
-typedef struct  {
-    bool is_notification_enabled;
-    bool is_indication_enabled;
-} ble_characteristic_subscription_status_t;
 
 
-typedef struct  {
-    ble_advertising_t* advertising;
-    ble_estc_service_t* estc_service;
-    ble_characteristic_subscription_status_t current_color_characteristic_subscription_status;
-    ble_characteristic_subscription_status_t command_characteristic_subscription_status;
-    ble_characteristic_subscription_status_t power_state_characteristic_subscription_status;
-} ble_context_t;
 
 
 
