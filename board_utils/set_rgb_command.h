@@ -1,7 +1,7 @@
 #include "command_utils.h"
 #include "color_utils.h"
 
-int set_rgb_executor(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8_t data_len)
+int set_rgb_executor(char* args, application_context_t* context, uint8_t* data, uint8_t data_len)
 {
     char msg[100];
     COLOR_RGB color = 

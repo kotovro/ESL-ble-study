@@ -34,8 +34,6 @@ NRF_BLE_QWR_DEF(m_qwr);
 BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
 uint16_t* connection_handle;
 
-static bool m_indication_enabled = false;
-static bool m_notification_enabled = false;
 static bool m_indication_pending = false;
 
 
@@ -64,9 +62,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             m_estc_service.connection_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_estc_service.connection_handle);
             APP_ERROR_CHECK(err_code);
-            // app_timer_start(m_notification_timer_id, APP_TIMER_TICKS(NOTIFICATION_FREQUENCY_MS), NULL);
-            // app_timer_start(m_indication_timer_id, APP_TIMER_TICKS(INDICATION_FREQUENCY_MS), NULL);   
-
+           
             break;
 
         case BLE_GAP_EVT_DISCONNECTED:
@@ -74,10 +70,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             // bsp_board_led_off(CONNECTED_LED);
             pattern_slow_blinking();
             m_estc_service.connection_handle = BLE_CONN_HANDLE_INVALID;
-            // app_timer_stop(m_notification_timer_id);
-            // app_timer_stop(m_indication_timer_id);
-            m_indication_enabled = false;
-            m_notification_enabled = false;
             advertising_start(pattern_slow_blinking);
             
             break;
@@ -94,9 +86,14 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                 NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->len);
                 
             }
+            else if (write->handle == m_estc_service.power_state_characteristic_handle.value_handle)
+            {
+                NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->len);
+                // estc_update_power_state_characteristic_value(&m_estc_service, write);
+            }
             else 
             {
-                for (int i = 0; i < 3; ++i)
+                for (int i = 0; i < 3; ++i) ///replace with CHARACTERISTIC_COUNT
                 {
                     if (write->handle == m_ble_context.characteristics_subscription_status[i].characteristic_handle->cccd_handle)
                     {
@@ -107,7 +104,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                 }
             }
         }
-        break;
+        break;//
 
         case BLE_GATTS_EVT_HVC:
                 m_indication_pending = false;
@@ -182,7 +179,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     }
 }
 
-void ble_init(COMMAND_DEFINITION* command_definitions, size_t command_definitions_size, Command_Executor default_command_executor, COMMAND_CONTEXT* application_context)
+void ble_init(COMMAND_DEFINITION* command_definitions, size_t command_definitions_size, command_executor default_command_executor, application_context_t* application_context)
 {
     ble_stack_init();
     gap_params_init();
@@ -216,38 +213,6 @@ void ble_stack_init()
 
     // Register a handler for BLE events.
     NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
-}
-
-
-uint32_t send_notitification(uint16_t conn_handle, uint16_t char_value_handle, const uint8_t *data) 
-{
-    ble_gatts_hvx_params_t hvx_params = {0};
-    uint16_t len = sizeof(data);
-
-    memset(&hvx_params, 0, sizeof(hvx_params));
-    hvx_params.handle = char_value_handle;
-    hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
-    hvx_params.p_len  = &len;
-    hvx_params.p_data = data;
-    
-    uint32_t err = sd_ble_gatts_hvx(conn_handle, &hvx_params);
-    return err;
-}
-
-
-uint32_t send_indication(uint16_t conn_handle, uint16_t char_value_handle, const uint8_t *data) 
-{
-    ble_gatts_hvx_params_t hvx_params = {0};
-    uint16_t len = sizeof(*data);
-
-    memset(&hvx_params, 0, sizeof(hvx_params));
-    hvx_params.handle = char_value_handle;
-    hvx_params.type   = BLE_GATT_HVX_INDICATION;
-    hvx_params.p_len  = &len;
-    hvx_params.p_data = data;
-    
-    uint32_t err = sd_ble_gatts_hvx(conn_handle, &hvx_params);
-    return err;
 }
 
 /**@brief Function for the GAP initialization.
@@ -372,7 +337,7 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
 /**@brief Function for initializing services that will be used by the application.
  */
 void services_init(nrf_ble_qwr_t* qwr, ble_estc_service_t* estc_service, COMMAND_DEFINITION* known_commands, size_t known_commands_size,
-                Command_Executor default_command, COMMAND_CONTEXT* application_context)
+                command_executor default_command, application_context_t* application_context)
 {
     ret_code_t         err_code;
     nrf_ble_qwr_init_t qwr_init = {0};
@@ -464,7 +429,12 @@ void advertising_start(indicate_function_t indicate_function)
 
     err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
     // err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG); - low-level call of gap
-    APP_ERROR_CHECK(err_code);
+    // APP_ERROR_CHECK(err_code); ///sometimes it;s safe just to ignore NRF_INALID_STATE in soft device, as forums suggest
+    //for example, https://devzone.nordicsemi.com/f/nordic-q-a/14099/handling-nrf_error_invalid_state-error-code
+    if (err_code != NRF_SUCCESS)
+    {
+        NRF_LOG_INFO("adv_start error: %d\n", err_code);
+    }
 
     if (indicate_function != NULL) indicate_function();    
 }

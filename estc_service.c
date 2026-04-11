@@ -47,9 +47,9 @@ typedef struct {
 
 static uint8_t m_response_len;
 static COMMAND_DEFINITION* m_command_definitions;
-static Command_Executor m_default_executor;
+static command_executor m_default_executor;
 static size_t m_command_definitions_size;
-static COMMAND_CONTEXT* m_application_context;
+static application_context_t* m_application_context;
 static RESPONSE m_response_data; 
 static RESPONSE m_current_command_data; 
 static ble_estc_service_t* m_service_instance;
@@ -59,6 +59,7 @@ static ret_code_t estc_ble_add_power_state_characteristic(ble_estc_service_t *se
 static ret_code_t estc_ble_add_command_characteristic(ble_estc_service_t *service);
 static ble_context_t* m_ble_context;
 
+
 void send_notification(uint16_t conn_handle, ble_gatts_char_handles_t* char_handle, uint8_t *data, uint16_t data_len)
 {
     NRF_LOG_INFO("Sending notification, data len: %d", data_len);
@@ -66,6 +67,7 @@ void send_notification(uint16_t conn_handle, ble_gatts_char_handles_t* char_hand
     {
         if (m_ble_context->characteristics_subscription_status[i].characteristic_handle == char_handle)
         { 
+            NRF_LOG_INFO("Notifications for charactristic enabled: %d", m_ble_context->characteristics_subscription_status[i].is_notification_enabled);
             if (m_ble_context->characteristics_subscription_status[i].is_notification_enabled)
             {
                 NRF_LOG_INFO("Sending notification, data len: %d", data_len);
@@ -92,6 +94,20 @@ void send_notification(uint16_t conn_handle, ble_gatts_char_handles_t* char_hand
                 APP_ERROR_CHECK(err_code);
             }
         }
+    }
+}
+
+void send_color_notification()
+{
+    NRF_LOG_INFO("The service is null: %d", m_service_instance == NULL);
+    NRF_LOG_INFO("Connection handle is: %d, while invalid is: %d", m_service_instance->connection_handle, BLE_CONN_HANDLE_INVALID);
+    if (m_service_instance->connection_handle != BLE_CONN_HANDLE_INVALID)
+    {
+        send_notification(
+            m_service_instance->connection_handle,
+            &m_service_instance->current_color_characteristic_handle,
+            (uint8_t*)m_application_context->current_color_description,
+            sizeof(COLOR_DESCRIPTION));
     }
 }
 
@@ -177,14 +193,15 @@ void init_processing_timers()
 }
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service, COMMAND_DEFINITION* known_commands, size_t known_commands_size,
-                Command_Executor default_command, COMMAND_CONTEXT* application_context, ble_context_t* ble_context)
+                command_executor default_command, application_context_t* application_context, ble_context_t* ble_context)
 {
     m_command_definitions = known_commands;
     m_command_definitions_size = known_commands_size;
     m_default_executor = default_command;
     m_application_context = application_context;
     m_ble_context = ble_context;
-
+    service->connection_handle = BLE_CONN_HANDLE_INVALID;
+    
     ret_code_t error_code = NRF_SUCCESS;
 
     ble_uuid_t service_uuid = { . uuid = ESTC_SERVICE_UUID, };
@@ -358,6 +375,7 @@ static ret_code_t estc_ble_add_command_characteristic(ble_estc_service_t *servic
         (uint8_t*)&m_response_data, (uint8_t*)&m_response_data, sizeof(m_response_data),
         desc, sizeof(desc) - 1,
         &service->command_characteristic_handle);
+        /// write either 00 or 01
 }
 
 

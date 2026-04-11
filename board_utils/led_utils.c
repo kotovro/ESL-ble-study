@@ -3,7 +3,7 @@
 #include "led_utils.h"
 #include "color_utils.h"
 
-COMMAND_CONTEXT* m_application_context;
+application_context_t* m_application_context;
 nrf_pwm_values_individual_t led_seq[FADE_STEPS];
 
 void show_color(COLOR_DESCRIPTION* color) 
@@ -156,7 +156,7 @@ static void gpio_output_voltage_setup(void)
 }
 #endif
 
-void init_leds_init(COMMAND_CONTEXT* context)
+void init_leds_init(application_context_t* context)
 {
     #if defined(BOARD_PCA10059)
     // If nRF52 USB Dongle is powered from USB (high voltage mode),

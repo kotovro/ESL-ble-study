@@ -99,6 +99,7 @@ SRC_FILES += \
   $(PROJ_DIR)/estc_service.c \
   $(PROJ_DIR)/ble_utils.c \
   $(PROJ_DIR)/board_utils/led_utils.c \
+  $(PROJ_DIR)/board_utils/nvram_utils.c \
   $(PROJ_DIR)/board_utils/color_utils.c \
   $(PROJ_DIR)/board_utils/cli_utils.c \
   $(PROJ_DIR)/board_utils/button_utils.c \

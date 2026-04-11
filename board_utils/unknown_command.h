@@ -1,4 +1,4 @@
-int unknown_command_executor(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8_t data_len)
+int unknown_command_executor(char* args, application_context_t* context, uint8_t* data, uint8_t data_len)
 {
     bool is_binary_arg = ((data != NULL));
     char msg[100];

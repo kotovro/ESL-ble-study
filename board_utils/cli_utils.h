@@ -12,14 +12,15 @@
 // #define CMD_APPLY_COLOR 5
 // #define CMD_LIST_COLORS 6
 // #define CMD_SAVE_COLORS 7
-// #define CMD_SAVE_CURRENT_COLOR 8
 #define CMD_POWER_OFF 3 
 #define CMD_POWER_ON 4 
+#define CMD_SAVE_CURRENT_COLOR 8
 #define CMD_UNKNOWN 255 
 #define ERROR_MESSAGE "Unknown command\r\n"
     
 
-typedef int  (*Command_Executor)(char*, COMMAND_CONTEXT*, uint8_t*, uint8_t);
+typedef int  (*command_executor)(char*, application_context_t*, uint8_t*, uint8_t);
+typedef void (*Command_Finalizer)();
 
 typedef struct
 {
@@ -31,16 +32,17 @@ typedef struct
 typedef struct
 {
     uint8_t command_type;
-    Command_Executor executor;    
+    command_executor executor;    
     char* name;
     char* description;
+    Command_Finalizer finalizer;
 } COMMAND_DEFINITION;
 
 
 
 
 void init_usb_cli(COMMAND_DEFINITION* known_commands, size_t known_commands_size,
-                Command_Executor default_command, COMMAND_CONTEXT* application_context);
+                command_executor default_command, application_context_t* application_context);
 void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
                            app_usbd_cdc_acm_user_event_t event);
 void usb_serial_dumb_print(char const * p_buffer, size_t len);

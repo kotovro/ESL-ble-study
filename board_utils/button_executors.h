@@ -3,7 +3,7 @@
 
 #include "commons.h"
 
-void init_button_executors(COMMAND_CONTEXT* application_context_ptr);
+void init_button_executors(application_context_t* application_context_ptr);
 void button_press_executor();
 void double_click_executor();
 

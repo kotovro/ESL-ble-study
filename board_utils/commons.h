@@ -91,7 +91,7 @@ typedef struct
     bool * hue_d;
     bool * saturation_d;
     bool * value_d;
-} COMMAND_CONTEXT;
+} application_context_t;
 
 
 

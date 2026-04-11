@@ -5,7 +5,7 @@
 COMMAND_DEFINITION command_definitions[AVAILABLE_COMMANDS_SLOTS];
 
  
-void init_color_palette(COMMAND_CONTEXT* context)
+void init_color_palette(application_context_t* context)
 {
     for (int i = 0; i < AVAILABLE_COLOR_SLOTS; i++) 
     {

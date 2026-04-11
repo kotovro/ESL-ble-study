@@ -81,6 +81,7 @@
 #include "set_hsv_command.h"
 #include "power_off_command.h"
 #include "power_on_command.h"
+#include "save_current_color_command.h"
 #include "help_command.h"
 
 bool hue_d = DECREASE;
@@ -90,11 +91,13 @@ int mode_global = SLEEP;
 COLOR_DESCRIPTION color_palette[AVAILABLE_COLOR_SLOTS];
 SETTINGS settings;
 COLOR_DESCRIPTION color_description = {1, "LOL\0", 22, 100, 100};
-COMMAND_CONTEXT application_context = {&mode_global, color_palette, &color_description, &settings, &hue_d, &saturation_d, &value_d};
+application_context_t application_context = {&mode_global, color_palette, &color_description, &settings, &hue_d, &saturation_d, &value_d};
 
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);         
 BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
+
+
 
 /**@brief Function for assert macro callback.
  *
@@ -116,7 +119,7 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
  *
  * @details Initializes all LEDs used by the application.
  */
-static void leds_init(COLOR_DESCRIPTION* color_description, COMMAND_CONTEXT* context)
+static void leds_init(COLOR_DESCRIPTION* color_description, application_context_t* context)
 {
     init_leds_init(context);
     init_pwm_leds(color_description);
@@ -156,10 +159,13 @@ void fill_command_definitions()
 {
     init_command_definitions();
     command_definitions[0] = set_rgb_command;
+    command_definitions[0].finalizer = send_color_notification;
     command_definitions[1] = set_hsv_command;
+    command_definitions[1].finalizer = send_color_notification;
     command_definitions[2] = power_off_command;
     command_definitions[3] = power_on_command;
-    command_definitions[4] = help_command;
+    command_definitions[4] = save_current_color_command;
+    command_definitions[5] = help_command;
 }
 
 

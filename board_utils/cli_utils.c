@@ -2,13 +2,13 @@
 #include <ctype.h>
 
 static COMMAND_DEFINITION* m_command_definitions;
-static Command_Executor m_default_executor;
+static command_executor m_default_executor;
 static size_t m_command_definitions_size;
-static COMMAND_CONTEXT* m_application_context;
+static application_context_t* m_application_context;
 
 #if ESTC_USB_CLI_ENABLED == 0
 void init_usb_cli(COMMAND_DEFINITION* known_commands, size_t known_commands_size,
-                Command_Executor default_command,  COMMAND_CONTEXT* application_context) {}
+                command_executor default_command,  application_context_t* application_context) {}
 void usb_serial_dumb_print(char const * p_buffer, size_t len) {}
 #else 
 
@@ -30,7 +30,7 @@ APP_USBD_CDC_ACM_GLOBAL_DEF(usb_cdc_acm,
 
 static void parse_command_timer_handler(void * p_context);
 void init_usb_cli(COMMAND_DEFINITION* known_commands, size_t known_commands_size,
-                Command_Executor default_command, COMMAND_CONTEXT* application_context)
+                command_executor default_command, application_context_t* application_context)
 {                       
     m_command_definitions = known_commands;
     m_command_definitions_size = known_commands_size;
@@ -97,7 +97,8 @@ void usb_serial_dumb_print(char const * p_buffer, size_t len)
 
 void parse_command()
 {
-    Command_Executor executor = m_default_executor;
+    command_executor executor = m_default_executor;
+    Command_Finalizer finalizer = NULL;
     char arguments[32];
     size_t cmd_name_length = 0;
 
@@ -107,6 +108,7 @@ void parse_command()
         if (is_command_found(m_command_definitions[i])) 
         {
             executor = m_command_definitions[i].executor;
+            finalizer = m_command_definitions[i].finalizer;
             cmd_name_length = strlen(m_command_definitions[i].name);
             is_command_recognized = true;
             break;
@@ -117,6 +119,10 @@ void parse_command()
         get_argument_string(arguments, cmd_name_length, 32);
     }
     executor(arguments, m_application_context, NULL, 0);
+    if (finalizer != NULL) 
+    {
+        finalizer();
+    }
 }
 
 static void parse_command_timer_handler(void * p_context)

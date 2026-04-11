@@ -74,11 +74,12 @@ typedef struct  {
     ble_characteristic_subscription_status_t characteristics_subscription_status[3];
 } ble_context_t;
 
+void send_color_notification();
 
 volatile static bool m_is_processing; 
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service, COMMAND_DEFINITION* known_commands, size_t known_commands_size,
-                Command_Executor default_command, COMMAND_CONTEXT* application_context, ble_context_t* ble_context);
+                command_executor default_command, application_context_t* application_context, ble_context_t* ble_context);
 
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
 

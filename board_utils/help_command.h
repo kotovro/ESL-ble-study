@@ -1,6 +1,6 @@
 #include "command_utils.h"
 
-int print_help_message(char* args, COMMAND_CONTEXT* context, uint8_t* data, uint8_t data_len)
+int print_help_message(char* args, application_context_t* context, uint8_t* data, uint8_t data_len)
 {
     bool is_binary_arg = ((data != NULL) && (data_len == 4));
     char msg[1024];
