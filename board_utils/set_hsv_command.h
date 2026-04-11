@@ -2,7 +2,7 @@
 
 int set_hsv_executor(char* args, application_context_t* context, uint8_t* data, uint8_t data_len)
 {
-    char msg[100];
+    static char msg[100];
     COLOR_HSV color = 
     {
         .h = 0,
@@ -68,12 +68,13 @@ int set_hsv_executor(char* args, application_context_t* context, uint8_t* data, 
         context->current_color_description->second_component = color.s;
         context->current_color_description->third_component = color.v;
         show_color(context->current_color_description);
-        snprintf(msg, sizeof(msg),
-                "Color set to: H=%u, S=%u, V=%u\r\n", color.h, color.s, color.v);
-
+        
         if (is_binary_arg) {
             NRF_LOG_INFO("Color set to: H=%u, S=%u, V=%u", color.h, color.s, color.v);
         } else {
+            snprintf(msg, sizeof(msg),
+                "Color set to: H=%u, S=%u, V=%u\r\n", color.h, color.s, color.v);
+
             usb_serial_dumb_print(msg, strlen(msg));
         }
         return 0;

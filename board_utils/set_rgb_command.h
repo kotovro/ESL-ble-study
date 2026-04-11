@@ -3,7 +3,7 @@
 
 int set_rgb_executor(char* args, application_context_t* context, uint8_t* data, uint8_t data_len)
 {
-    char msg[100];
+    static char msg[100];
     COLOR_RGB color = 
     {
         .r = 0,
@@ -59,12 +59,13 @@ int set_rgb_executor(char* args, application_context_t* context, uint8_t* data, 
         context->current_color_description->second_component = hsv_color.s;
         context->current_color_description->third_component = hsv_color.v;
         show_color(context->current_color_description);
-        snprintf(msg, sizeof(msg),
-                "Color set to: R=%u, G=%u, B=%u\r\n", color.r, color.g, color.b);
+        
         
         if (is_binary_arg) {
             NRF_LOG_INFO("Color set to: R=%u, G=%u, B=%u", color.r, color.g, color.b);
         } else {
+            snprintf(msg, sizeof(msg),
+                "Color set to: R=%u, G=%u, B=%u\r\n", color.r, color.g, color.b);
             usb_serial_dumb_print(msg, strlen(msg));
         }
         return 0;
