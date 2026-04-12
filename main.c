@@ -98,6 +98,17 @@ NRF_BLE_QWR_DEF(m_qwr);
 BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
 
 
+void read_current_color_from_nvm()
+{   
+    if (settings.saved_color.h > 360 ||
+        settings.saved_color.s > 100 ||
+        settings.saved_color.v > 100) 
+        return;
+    
+    color_description.first_component = settings.saved_color.h;
+    color_description.second_component = settings.saved_color.s;
+    color_description.third_component = settings.saved_color.v;
+}
 
 /**@brief Function for assert macro callback.
  *
@@ -199,7 +210,6 @@ int main(void)
     // Initialize.
 
     log_init();
-    leds_init(&color_description, &application_context);
     ble_timers_init();
     init_button_executors(&application_context);
     buttons_init();
@@ -207,8 +217,21 @@ int main(void)
 
     ble_init(command_definitions, sizeof(command_definitions) / sizeof(COMMAND_DEFINITION),
                 unknown_command_executor, &application_context);
-
+    nvram_init();
     fill_command_definitions();
+
+    if (is_version_changed(CURRENT_VERSION))
+    {
+        update_version(CURRENT_VERSION);
+        nvram_save_settings((uint32_t*)(application_context.settings), sizeof(settings));
+    } 
+    else
+    {
+        nvram_load_settings((uint32_t*)(application_context.settings), sizeof(settings));
+        read_current_color_from_nvm();
+    }
+    leds_init(&color_description, &application_context);
+     
     init_usb_cli(command_definitions, sizeof(command_definitions) / sizeof(COMMAND_DEFINITION),
                 unknown_command_executor, &application_context);
     // Start execution.
