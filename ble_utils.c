@@ -83,13 +83,14 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             {
                 NRF_LOG_INFO("Received write event");
                 estc_process_command(&m_estc_service, write); 
-                NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->len);
+                NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->data);
                 
             }
             else if (write->handle == m_estc_service.power_state_characteristic_handle.value_handle)
             {
-                NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->len);
-                // estc_update_power_state_characteristic_value(&m_estc_service, write);
+                //fds_gc();
+                NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->data);
+                estc_update_power_state_characteristic_value(&m_estc_service, write);
             }
             else 
             {

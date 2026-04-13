@@ -79,26 +79,27 @@
 #include "unknown_command.h"
 #include "set_rgb_command.h"
 #include "set_hsv_command.h"
-#include "power_off_command.h"
-#include "power_on_command.h"
-#include "save_current_color_command.h"
+#include "power_switch_command.h"
+#include "save_settings_command.h"
 #include "help_command.h"
 
 bool hue_d = DECREASE;
 bool saturation_d = DECREASE;
 bool value_d = DECREASE;
 int mode_global = SLEEP;
+uint8_t led_power_mode = LED_ON;
 COLOR_DESCRIPTION color_palette[AVAILABLE_COLOR_SLOTS];
-SETTINGS settings;
 COLOR_DESCRIPTION color_description = {1, "LOL\0", 22, 100, 100};
-application_context_t application_context = {&mode_global, color_palette, &color_description, &settings, &hue_d, &saturation_d, &value_d};
+SETTINGS settings = { 0, LED_ON, {22, 100, 100}  };
+application_context_t application_context = {&mode_global, &led_power_mode, color_palette, &color_description, &settings, &hue_d, &saturation_d, &value_d};
+
 
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);         
 BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
 
 
-void read_current_color_from_nvm()
+void read_state_from_nvm()
 {   
     if (settings.saved_color.h > 360 ||
         settings.saved_color.s > 100 ||
@@ -108,6 +109,8 @@ void read_current_color_from_nvm()
     color_description.first_component = settings.saved_color.h;
     color_description.second_component = settings.saved_color.s;
     color_description.third_component = settings.saved_color.v;
+
+    led_power_mode = settings.led_mode;
 }
 
 /**@brief Function for assert macro callback.
@@ -173,10 +176,10 @@ void fill_command_definitions()
     command_definitions[0].finalizer = send_color_notification;
     command_definitions[1] = set_hsv_command;
     command_definitions[1].finalizer = send_color_notification;
-    command_definitions[2] = power_off_command;
-    command_definitions[3] = power_on_command;
-    command_definitions[4] = save_current_color_command;
-    command_definitions[5] = help_command;
+    command_definitions[2] = power_switch_command;
+    command_definitions[2].finalizer = send_power_state_notification;
+    command_definitions[3] = save_settings_command;
+    command_definitions[4] = help_command;
 }
 
 
@@ -228,7 +231,11 @@ int main(void)
     else
     {
         nvram_load_settings((uint32_t*)(application_context.settings), sizeof(settings));
-        read_current_color_from_nvm();
+        read_state_from_nvm();
+        if (led_power_mode == LED_OFF)
+        {
+            mode_global = POWER_OFF;
+        }
     }
     leds_init(&color_description, &application_context);
      

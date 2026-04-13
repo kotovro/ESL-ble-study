@@ -1,7 +1,7 @@
 #include "button_executors.h"
 #include "led_utils.h"
 
-extern void save_current_color(char* args, application_context_t* context, uint8_t* data, uint8_t data_len);
+extern void save_settings(char* args, application_context_t* context, uint8_t* data, uint8_t data_len);
 static application_context_t* m_application_context;
 
 void init_button_executors(application_context_t* application_context_ptr)
@@ -85,7 +85,7 @@ void double_click_executor()
     else if (*(m_application_context->mode_global) == PICKING_VALUE)
     {
         *(m_application_context->mode_global) = SLEEP;
-        save_current_color(NULL, m_application_context, NULL, 0);
+        save_settings(NULL, m_application_context, NULL, 0);
     }
     show_color(m_application_context->current_color_description);
 }

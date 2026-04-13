@@ -14,7 +14,7 @@
 #include "app_timer.h"
 #include "nrfx_clock.h"
 
-#define CURRENT_VERSION ((uint32_t)7)
+#define CURRENT_VERSION ((uint32_t)9)
 #define AVAILABLE_COMMANDS_SLOTS 9
 #define AVAILABLE_COLOR_SLOTS 10
 
@@ -30,6 +30,10 @@
 #define PICKING_SATURATION  2
 #define PICKING_VALUE       3
 #define POWER_OFF           4
+
+//LED power state
+#define LED_OFF          0
+#define LED_ON           1
 
 // --- Color ---
 #define COLOR_CHANGE_MS    100
@@ -78,6 +82,7 @@ typedef struct {
 
 typedef struct {
     uint32_t version;
+    uint32_t led_mode;
     COLOR_HSV saved_color;
     COLOR_DESCRIPTION color_palette[AVAILABLE_COLOR_SLOTS]; 
 } SETTINGS;
@@ -85,6 +90,7 @@ typedef struct {
 typedef struct 
 {
     int* mode_global;
+    uint8_t* led_power_mode;
     COLOR_DESCRIPTION* color_palette; 
     COLOR_DESCRIPTION* current_color_description;
     SETTINGS* settings;
