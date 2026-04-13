@@ -2,7 +2,7 @@
 #include "commons.h"
 
 
-COLOR_HSV rgb_to_hsv(COLOR_RGB rgb) 
+color_hsv_t rgb_to_hsv(color_rgb_t rgb) 
 {
     float r = rgb.r / 255.0f;
     float g = rgb.g / 255.0f;
@@ -12,7 +12,7 @@ COLOR_HSV rgb_to_hsv(COLOR_RGB rgb)
     float min = fminf(r, fminf(g, b));
     float delta = max - min;
 
-    COLOR_HSV hsv;
+    color_hsv_t hsv;
     // Hue calculation
     if (delta < 0.00001f) {
         hsv.h = 0;
@@ -36,7 +36,7 @@ COLOR_HSV rgb_to_hsv(COLOR_RGB rgb)
     return hsv;
 }
 
-COLOR_RGB hsv_to_rgb(COLOR_HSV hsv) 
+color_rgb_t hsv_to_rgb(color_hsv_t hsv) 
 {
     float r, g, b;
     float hf = hsv.h / 60.0f;
@@ -57,7 +57,7 @@ COLOR_RGB hsv_to_rgb(COLOR_HSV hsv)
         case 5: r = vf; g = p; b = q; break;
         default: r = g = b = 0; break;
     }
-    COLOR_RGB result_COLOR_RGB;
+    color_rgb_t result_COLOR_RGB;
     result_COLOR_RGB.r = (uint16_t)(r * 255);
     result_COLOR_RGB.g = (uint16_t)(g * 255);
     result_COLOR_RGB.b = (uint16_t)(b * 255);

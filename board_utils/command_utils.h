@@ -2,18 +2,18 @@
 #define COMMAND_UTILS_H
 
 #include "commons.h"
-COMMAND_DEFINITION command_definitions[AVAILABLE_COMMANDS_SLOTS];
+command_definition_t command_definitions[AVAILABLE_COMMANDS_SLOTS];
 
  
 void init_color_palette(application_context_t* context)
 {
     for (int i = 0; i < AVAILABLE_COLOR_SLOTS; i++) 
     {
-        context->color_palette[i].colorType = 255; // Unknown
-        context->color_palette[i].colorName[0] = '\0';
-        context->color_palette[i].first_component = 0;
-        context->color_palette[i].second_component = 0;
-        context->color_palette[i].third_component = 0;
+        context->color_palette[i] = (COLOR_DESCRIPTION){
+            .colorType = 255,
+            .colorName = "",
+            .hsv = {0}
+        };
     }
 }
 

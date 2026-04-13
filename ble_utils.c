@@ -86,11 +86,11 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                 NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->data);
                 
             }
-            else if (write->handle == m_estc_service.power_state_characteristic_handle.value_handle)
+            else if (write->handle == m_estc_service.led_power_state_characteristic_handle.value_handle)
             {
                 //fds_gc();
                 NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->data);
-                estc_update_power_state_characteristic_value(&m_estc_service, write);
+                estc_update_led_power_state_characteristic_value(&m_estc_service, write);
             }
             else 
             {
@@ -110,9 +110,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GATTS_EVT_HVC:
                 m_indication_pending = false;
             break;
-        // case BLE_GATTS_EVT_HVN_TX_COMPLETE:
-        //     m_indication_pending = false;
-        //     break;
         
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
         {
@@ -180,7 +177,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     }
 }
 
-void ble_init(COMMAND_DEFINITION* command_definitions, size_t command_definitions_size, command_executor default_command_executor, application_context_t* application_context)
+void ble_init(command_definition_t* command_definitions, size_t command_definitions_size, command_executor default_command_executor, application_context_t* application_context)
 {
     ble_stack_init();
     gap_params_init();
@@ -337,7 +334,7 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
 
 /**@brief Function for initializing services that will be used by the application.
  */
-void services_init(nrf_ble_qwr_t* qwr, ble_estc_service_t* estc_service, COMMAND_DEFINITION* known_commands, size_t known_commands_size,
+void services_init(nrf_ble_qwr_t* qwr, ble_estc_service_t* estc_service, command_definition_t* known_commands, size_t known_commands_size,
                 command_executor default_command, application_context_t* application_context)
 {
     ret_code_t         err_code;
@@ -353,7 +350,7 @@ void services_init(nrf_ble_qwr_t* qwr, ble_estc_service_t* estc_service, COMMAND
     
     m_ble_context.characteristics_subscription_status[0].characteristic_handle = &m_estc_service.command_characteristic_handle;
     m_ble_context.characteristics_subscription_status[1].characteristic_handle = &m_estc_service.current_color_characteristic_handle;
-    m_ble_context.characteristics_subscription_status[2].characteristic_handle = &m_estc_service.power_state_characteristic_handle;
+    m_ble_context.characteristics_subscription_status[2].characteristic_handle = &m_estc_service.led_power_state_characteristic_handle;
     for (int i = 0; i < 3; ++i)
     {
         m_ble_context.characteristics_subscription_status[i].is_indication_enabled = false;

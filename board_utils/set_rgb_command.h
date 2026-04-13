@@ -4,7 +4,7 @@
 int set_rgb_executor(char* args, application_context_t* context, uint8_t* data, uint8_t data_len)
 {
     static char msg[100];
-    COLOR_RGB color = 
+    color_rgb_t color = 
     {
         .r = 0,
         .g = 0,
@@ -53,11 +53,9 @@ int set_rgb_executor(char* args, application_context_t* context, uint8_t* data, 
 
     if (is_args_valid)
     {
-        COLOR_HSV hsv_color = rgb_to_hsv(color);
+        color_hsv_t hsv_color = rgb_to_hsv(color);
         context->current_color_description->colorType = 1; // HSV
-        context->current_color_description->first_component = hsv_color.h;
-        context->current_color_description->second_component = hsv_color.s;
-        context->current_color_description->third_component = hsv_color.v;
+        context->current_color_description->hsv = hsv_color;
         show_color(context->current_color_description);
         
         
@@ -82,7 +80,7 @@ int set_rgb_executor(char* args, application_context_t* context, uint8_t* data, 
     }
 }
 
-COMMAND_DEFINITION set_rgb_command = 
+command_definition_t set_rgb_command = 
 {
     .command_type = CMD_SET_RGB,
     .name = "RGB",

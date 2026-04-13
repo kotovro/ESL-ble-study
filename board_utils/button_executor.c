@@ -20,47 +20,49 @@ void button_press_executor()
         *(m_application_context->mode_global) = SLEEP;
     } 
 
+    color_hsv_t *hsv = &m_application_context->current_color_description->hsv;
+
     if (*(m_application_context->mode_global) == PICKING_HUE) {
         if (*(m_application_context->hue_d) == INCREASE) {
-            m_application_context->current_color_description->first_component += STEP_OF_COLOR_CHANGE;
-            if (m_application_context->current_color_description->first_component >= 360) {
-                m_application_context->current_color_description->first_component = 360;
+            hsv->h += STEP_OF_COLOR_CHANGE;
+            if (hsv->h >= 360) {
+                hsv->h = 360;
                 *(m_application_context->hue_d) = DECREASE;
             }
         } else {
-            m_application_context->current_color_description->first_component -= STEP_OF_COLOR_CHANGE;
-            if ((int16_t)m_application_context->current_color_description->first_component <= 0) {
-                m_application_context->current_color_description->first_component = 0;
+            hsv->h -= STEP_OF_COLOR_CHANGE;
+            if ((int16_t)hsv->h <= 0) {
+                hsv->h = 0;
                 *(m_application_context->hue_d) = INCREASE;
             }
         }
     } 
     else if (*(m_application_context->mode_global) == PICKING_SATURATION) {
         if (*(m_application_context->saturation_d) == INCREASE) {
-            m_application_context->current_color_description->second_component += STEP_OF_COLOR_CHANGE;
-            if (m_application_context->current_color_description->second_component >= 100) {
-                m_application_context->current_color_description->second_component = 100;
+            hsv->s += STEP_OF_COLOR_CHANGE;
+            if (hsv->s >= 100) {
+                hsv->s = 100;
                 *(m_application_context->saturation_d) = DECREASE;
             }
         } else {
-            m_application_context->current_color_description->second_component -= STEP_OF_COLOR_CHANGE;
-            if ((int8_t)m_application_context->current_color_description->second_component <= 0) {
-                m_application_context->current_color_description->second_component = 0;
+            hsv->s -= STEP_OF_COLOR_CHANGE;
+            if ((int8_t)hsv->s <= 0) {
+                hsv->s = 0;
                 *(m_application_context->saturation_d) = INCREASE;
             }
         }
     } 
     else if (*(m_application_context->mode_global) == PICKING_VALUE) {
         if (*(m_application_context->value_d) == INCREASE) {
-            m_application_context->current_color_description->third_component += STEP_OF_COLOR_CHANGE;
-            if (m_application_context->current_color_description->third_component >= 100) {
-                m_application_context->current_color_description->third_component = 100;
+            hsv->v += STEP_OF_COLOR_CHANGE;
+            if (hsv->v >= 100) {
+                hsv->v = 100;
                 *(m_application_context->value_d) = DECREASE;
             }
         } else {
-            m_application_context->current_color_description->third_component -= STEP_OF_COLOR_CHANGE;
-            if ((int8_t)m_application_context->current_color_description->third_component <= 0) {
-                m_application_context->current_color_description->third_component = 0;
+            hsv->v -= STEP_OF_COLOR_CHANGE;
+            if ((int8_t)hsv->v <= 0) {
+                hsv->v = 0;
                 *(m_application_context->value_d) = INCREASE;
             }
         }

@@ -25,7 +25,7 @@ int power_switch_executor(char* args, application_context_t* context, uint8_t* d
     return 0;
 }
 
-COMMAND_DEFINITION power_switch_command  = 
+command_definition_t power_switch_command  = 
 {
         .command_type = CMD_POWER_SWITCH,
         .name = "POWER_SWITCH",

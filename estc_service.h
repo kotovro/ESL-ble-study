@@ -45,9 +45,9 @@
 // #define ESTC_SERVICE_UUID 0xabcd
 #define ESTC_SERVICE_UUID 0x230F
 
-#define ESTC_GATT_CHAR_1_UUID  0x5cd7
-#define ESTC_GATT_CHAR_2_UUID  0x5cd8
-#define ESTC_GATT_CHAR_3_UUID  0x5cd9
+#define ESTC_GATT_CHAR_CURRENT_COLOR_UUID  0x5cd7
+#define ESTC_GATT_CHAR_LED_POWER_STATE_UUID  0x5cd8
+#define ESTC_GATT_CHAR_COMMAND_UUID  0x5cd9
 
 
 
@@ -58,7 +58,7 @@ typedef struct
     uint16_t service_handle;
     uint16_t connection_handle;
     ble_gatts_char_handles_t current_color_characteristic_handle;
-    ble_gatts_char_handles_t power_state_characteristic_handle;
+    ble_gatts_char_handles_t led_power_state_characteristic_handle;
     ble_gatts_char_handles_t command_characteristic_handle;
 } ble_estc_service_t;
 
@@ -74,20 +74,18 @@ typedef struct  {
     ble_characteristic_subscription_status_t characteristics_subscription_status[3];
 } ble_context_t;
 
-void send_color_notification();
-void send_power_state_notification();
+void send_color_notification(void);
+void send_power_state_notification(void);
 
 volatile static bool m_is_processing; 
 
-ret_code_t estc_ble_service_init(ble_estc_service_t *service, COMMAND_DEFINITION* known_commands, size_t known_commands_size,
+ret_code_t estc_ble_service_init(ble_estc_service_t *service, command_definition_t* known_commands, size_t known_commands_size,
                 command_executor default_command, application_context_t* application_context, ble_context_t* ble_context);
 
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
 
-// void estc_update_current_color_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write);
-
 void estc_process_command(ble_estc_service_t *service, const ble_gatts_evt_write_t *write);
 
-void estc_update_power_state_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write); 
+void estc_update_led_power_state_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write); 
 
 #endif /* ESTC_SERVICE_H__ */

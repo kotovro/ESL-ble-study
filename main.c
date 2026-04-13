@@ -89,7 +89,11 @@ bool value_d = DECREASE;
 int mode_global = SLEEP;
 uint8_t led_power_mode = LED_ON;
 COLOR_DESCRIPTION color_palette[AVAILABLE_COLOR_SLOTS];
-COLOR_DESCRIPTION color_description = {1, "LOL\0", 22, 100, 100};
+COLOR_DESCRIPTION color_description = {
+    .colorType = 1,
+    .colorName = "LOL",
+    .hsv = { .h = 22, .s = 100, .v = 100 }
+};
 SETTINGS settings = { 0, LED_ON, {22, 100, 100}  };
 application_context_t application_context = {&mode_global, &led_power_mode, color_palette, &color_description, &settings, &hue_d, &saturation_d, &value_d};
 
@@ -106,10 +110,7 @@ void read_state_from_nvm()
         settings.saved_color.v > 100) 
         return;
     
-    color_description.first_component = settings.saved_color.h;
-    color_description.second_component = settings.saved_color.s;
-    color_description.third_component = settings.saved_color.v;
-
+    color_description.hsv = settings.saved_color;
     led_power_mode = settings.led_mode;
 }
 
@@ -218,7 +219,7 @@ int main(void)
     buttons_init();
     power_management_init();
 
-    ble_init(command_definitions, sizeof(command_definitions) / sizeof(COMMAND_DEFINITION),
+    ble_init(command_definitions, sizeof(command_definitions) / sizeof(command_definition_t),
                 unknown_command_executor, &application_context);
     nvram_init();
     fill_command_definitions();
@@ -239,7 +240,7 @@ int main(void)
     }
     leds_init(&color_description, &application_context);
      
-    init_usb_cli(command_definitions, sizeof(command_definitions) / sizeof(COMMAND_DEFINITION),
+    init_usb_cli(command_definitions, sizeof(command_definitions) / sizeof(command_definition_t),
                 unknown_command_executor, &application_context);
     // Start execution.
     NRF_LOG_INFO("Blinky example started.");

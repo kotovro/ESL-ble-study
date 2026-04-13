@@ -8,28 +8,28 @@ nrf_pwm_values_individual_t led_seq[FADE_STEPS];
 
 void show_color(COLOR_DESCRIPTION* color) 
 {
-    NRF_LOG_INFO("Showing color: type=%u, comp1=%u, comp2=%u, comp3=%u",
-                 color->colorType,
-                 color->first_component,
-                 color->second_component,
-                 color->third_component);
-    LOG_BACKEND_USB_PROCESS();
-    COLOR_RGB rgb_color;
     if (color->colorType == 0) // RGB
     {
-        rgb_color.r = color->first_component;
-        rgb_color.g = (uint16_t)color->second_component;
-        rgb_color.b = (uint16_t)color->third_component;
+        NRF_LOG_INFO("Showing color: type=RGB, r=%u, g=%u, b=%u",
+                    color->rgb.r, color->rgb.g, color->rgb.b);
     }
     else if (color->colorType == 1) // HSV
     {
-        COLOR_HSV hsv_color;
-        hsv_color.h = color->first_component;
-        hsv_color.s = (char)color->second_component;
-        hsv_color.v = (char)color->third_component;
-        rgb_color = hsv_to_rgb(hsv_color);
+        NRF_LOG_INFO("Showing color: type=HSV, h=%u, s=%u, v=%u",
+                    color->hsv.h, color->hsv.s, color->hsv.v);
     }
-    else 
+    LOG_BACKEND_USB_PROCESS();
+
+    color_rgb_t rgb_color;
+    if (color->colorType == 0) // RGB
+    {
+        rgb_color = color->rgb;
+    }
+    else if (color->colorType == 1) // HSV
+    {
+        rgb_color = hsv_to_rgb(color->hsv);
+    }
+    else
     {
         return; // Unknown color type
     }
@@ -37,7 +37,7 @@ void show_color(COLOR_DESCRIPTION* color)
 }
 
 
-void show_rgb_color(COLOR_RGB color) 
+void show_rgb_color(color_rgb_t color) 
 {
     if (*(m_application_context->mode_global) == SLEEP)
     {

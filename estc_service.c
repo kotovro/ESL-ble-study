@@ -46,7 +46,7 @@ typedef struct {
 } RESPONSE;
 
 static uint8_t m_response_len;
-static COMMAND_DEFINITION* m_command_definitions;
+static command_definition_t* m_command_definitions;
 static command_executor m_default_executor;
 static size_t m_command_definitions_size;
 static application_context_t* m_application_context;
@@ -55,7 +55,7 @@ static RESPONSE m_current_command_data;
 static ble_estc_service_t* m_service_instance;
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service);
 static ret_code_t estc_ble_add_current_color_characteristic(ble_estc_service_t *service);
-static ret_code_t estc_ble_add_power_state_characteristic(ble_estc_service_t *service);
+static ret_code_t estc_ble_add_led_power_state_characteristic(ble_estc_service_t *service);
 static ret_code_t estc_ble_add_command_characteristic(ble_estc_service_t *service);
 static ble_context_t* m_ble_context;
 
@@ -98,7 +98,7 @@ void send_notification(uint16_t conn_handle, ble_gatts_char_handles_t* char_hand
     }
 }
 
-void send_color_notification()
+void send_color_notification(void)
 {
     NRF_LOG_INFO("The service is null: %d", m_service_instance == NULL);
     NRF_LOG_INFO("Connection handle is: %d, while invalid is: %d", m_service_instance->connection_handle, BLE_CONN_HANDLE_INVALID);
@@ -109,10 +109,10 @@ void send_color_notification()
         sizeof(COLOR_DESCRIPTION));
 }
 
-void send_power_state_notification()
+void send_power_state_notification(void)
 {
     send_notification(m_service_instance->connection_handle,
-        &m_service_instance->power_state_characteristic_handle,
+        &m_service_instance->led_power_state_characteristic_handle,
         (uint8_t*)m_application_context->led_power_mode,
         sizeof(uint8_t));
 }
@@ -132,7 +132,7 @@ void estc_execute_command(void * p_context)
     else 
     {
         NRF_LOG_INFO("Will try find: %d", m_current_command_data.command[0]);
-        COMMAND_DEFINITION* command = NULL;
+        command_definition_t* command = NULL;
         for (size_t i = 0; i < m_command_definitions_size; ++i)
         {
             if (m_command_definitions[i].command_type == m_current_command_data.command[0]) 
@@ -182,7 +182,7 @@ void estc_execute_command(void * p_context)
         (uint8_t*)m_application_context->current_color_description,
         sizeof(COLOR_DESCRIPTION));
     send_notification(m_service_instance->connection_handle,
-        &m_service_instance->power_state_characteristic_handle,
+        &m_service_instance->led_power_state_characteristic_handle,
         (uint8_t*)m_application_context->led_power_mode,
         sizeof(uint8_t));
     // gatts_value = set_response();
@@ -191,7 +191,7 @@ void estc_execute_command(void * p_context)
     
 }
 
-void init_processing_timers()
+void init_processing_timers(void)
 {
     ret_code_t err_code;
     
@@ -203,7 +203,7 @@ void init_processing_timers()
     //app_timer_create(&processing_start_timer, APP_TIMER_MODE_SINGLE_SHOT, NULL);
 }
 
-ret_code_t estc_ble_service_init(ble_estc_service_t *service, COMMAND_DEFINITION* known_commands, size_t known_commands_size,
+ret_code_t estc_ble_service_init(ble_estc_service_t *service, command_definition_t* known_commands, size_t known_commands_size,
                 command_executor default_command, application_context_t* application_context, ble_context_t* ble_context)
 {
     m_command_definitions = known_commands;
@@ -259,7 +259,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
  
     error_code = estc_ble_add_current_color_characteristic(service);
     APP_ERROR_CHECK(error_code);
-    error_code = estc_ble_add_power_state_characteristic(service);
+    error_code = estc_ble_add_led_power_state_characteristic(service);
     APP_ERROR_CHECK(error_code);
     error_code = estc_ble_add_command_characteristic(service);
     APP_ERROR_CHECK(error_code);
@@ -344,28 +344,28 @@ static ret_code_t estc_ble_add_current_color_characteristic(ble_estc_service_t *
 
     return estc_ble_add_characteristic(
         service,
-        ESTC_GATT_CHAR_1_UUID,
+        ESTC_GATT_CHAR_CURRENT_COLOR_UUID,
              //permissions: read, write, notify, indicate
         true, false,
-        true, false,
+        true, true,
         (uint8_t*)m_application_context->current_color_description, (uint8_t*)m_application_context->current_color_description, sizeof(*m_application_context->current_color_description),
         desc, sizeof(desc) - 1,
         &service->current_color_characteristic_handle);
 }
 
-static ret_code_t estc_ble_add_power_state_characteristic(ble_estc_service_t *service)
+static ret_code_t estc_ble_add_led_power_state_characteristic(ble_estc_service_t *service)
 {
     static const uint8_t desc[]  = "Текущее состояние свтеодиода(*влкючен или выключен*)";
 
     return estc_ble_add_characteristic(
         service,
-        ESTC_GATT_CHAR_2_UUID,
+        ESTC_GATT_CHAR_LED_POWER_STATE_UUID,
         //permissions: read, write, notify, indicate
         true, true,
-        false, true,
+        true, true,
         m_application_context->led_power_mode, m_application_context->led_power_mode, sizeof(uint8_t),
         desc, sizeof(desc),
-        &service->power_state_characteristic_handle);
+        &service->led_power_state_characteristic_handle);
 }
 
 static ret_code_t estc_ble_add_command_characteristic(ble_estc_service_t *service)
@@ -374,33 +374,15 @@ static ret_code_t estc_ble_add_command_characteristic(ble_estc_service_t *servic
 
     return estc_ble_add_characteristic(
         service,
-        ESTC_GATT_CHAR_3_UUID,
+        ESTC_GATT_CHAR_COMMAND_UUID,
         //permissions: read, write, notify, indicate
         true, true,
-        true, false,
+        true, true,
         (uint8_t*)&m_response_data, (uint8_t*)&m_response_data, sizeof(m_response_data),
         desc, sizeof(desc) - 1,
         &service->command_characteristic_handle);
         /// write either 00 or 01
 }
-
-
-// void estc_update_current_color_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write)
-// {       
-//     NRF_LOG_INFO("Len of the value is: %d", write->len);
-//     if (*m_application_context->ble_command_status != BLE_COMMAND_IN_PROCESS)
-//     {
-//         *m_application_context->ble_command_status = BLE_COMMAND_IN_PROCESS;
-//         memcpy(m_write_data, write->data, write->len);
-//         m_write_data_len = write->len;
-//         ret_code_t err_code = app_timer_start(processing_start_timer, APP_TIMER_TICKS(100), NULL);
-//         NRF_LOG_INFO("Timer start error code: %d", err_code);
-//     }
-
-//     ble_gatts_value_t gatts_value = set_response();
-//     ret_code_t error_code = sd_ble_gatts_value_set(m_service_instance->connection_handle, m_service_instance->command_characteristic_handle.value_handle, &gatts_value);
-//     APP_ERROR_CHECK(error_code);
-// }
 
 void estc_process_command(ble_estc_service_t *service, const ble_gatts_evt_write_t *write)
 {
@@ -429,26 +411,12 @@ void estc_process_command(ble_estc_service_t *service, const ble_gatts_evt_write
     // APP_ERROR_CHECK(error_code);
 }
 
-void estc_update_power_state_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write)
+void estc_update_led_power_state_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write)
 {
     NRF_LOG_INFO("We received data: %d", *write->data);
 
     m_response_data.command[0] = CMD_POWER_SWITCH;
     m_response_data.command[1] = *write->data; 
     estc_process_command(service, write);
-    // APP_ERROR_CHECK(error_code);
-        // ble_gatts_value_t gatts_value = {0};
-        // gatts_value.len = sizeof(*m_application_context->mode_global);
-        // gatts_value.offset = 0;
-        // gatts_value.p_value = (uint8_t*)m_application_context->mode_global;
-
-        // ret_code_t error_code = sd_ble_gatts_value_set(m_service_instance->connection_handle, m_service_instance->power_state_characteristic_handle.value_handle, &gatts_value);
-        // APP_ERROR_CHECK(error_code);
-        // send_notification(m_service_instance->connection_handle, &m_service_instance->power_state_characteristic_handle, (uint8_t*)&m_response_data, sizeof(m_response_data));
-        
-    
-    // ret_code_t error_code = sd_ble_gatts_value_set(service->connection_handle, service->power_state_characteristic_handle.value_handle, &gatts_value);
-
-    // APP_ERROR_CHECK(error_code);
 }
 

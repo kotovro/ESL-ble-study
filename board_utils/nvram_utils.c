@@ -31,7 +31,7 @@ static void fds_evt_handler(fds_evt_t const * p_fds_evt)
     }
 }
 
-void nvram_init()
+void nvram_init(void)
 {
     ret_code_t ret = fds_register(fds_evt_handler);
     if (ret != NRF_SUCCESS)

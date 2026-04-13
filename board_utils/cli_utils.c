@@ -1,13 +1,13 @@
 #include "cli_utils.h"
 #include <ctype.h>
 
-static COMMAND_DEFINITION* m_command_definitions;
+static command_definition_t* m_command_definitions;
 static command_executor m_default_executor;
 static size_t m_command_definitions_size;
 static application_context_t* m_application_context;
 
 #if ESTC_USB_CLI_ENABLED == 0
-void init_usb_cli(COMMAND_DEFINITION* known_commands, size_t known_commands_size,
+void init_usb_cli(command_definition_t* known_commands, size_t known_commands_size,
                 command_executor default_command,  application_context_t* application_context) {}
 void usb_serial_dumb_print(char const * p_buffer, size_t len) {}
 #else 
@@ -29,7 +29,7 @@ APP_USBD_CDC_ACM_GLOBAL_DEF(usb_cdc_acm,
 
 
 static void parse_command_timer_handler(void * p_context);
-void init_usb_cli(COMMAND_DEFINITION* known_commands, size_t known_commands_size,
+void init_usb_cli(command_definition_t* known_commands, size_t known_commands_size,
                 command_executor default_command, application_context_t* application_context)
 {                       
     m_command_definitions = known_commands;
@@ -46,7 +46,7 @@ void init_usb_cli(COMMAND_DEFINITION* known_commands, size_t known_commands_size
     APP_ERROR_CHECK(ret);
 }
 
-bool is_command_found(COMMAND_DEFINITION cmd_def)
+bool is_command_found(command_definition_t cmd_def)
 {
     if (strlen(m_command_buffer) < strlen(cmd_def.name)) 
     {

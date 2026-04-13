@@ -18,7 +18,7 @@ void gap_params_init(void);
 void gatt_init(nrf_ble_gatt_t* gatt);
 void sleep_mode_enter(void);
 void on_adv_evt(ble_adv_evt_t ble_adv_evt);
-void services_init(nrf_ble_qwr_t* qwr, ble_estc_service_t* estc_service, COMMAND_DEFINITION* known_commands, size_t known_commands_size,
+void services_init(nrf_ble_qwr_t* qwr, ble_estc_service_t* estc_service, command_definition_t* known_commands, size_t known_commands_size,
                 command_executor default_command, application_context_t* application_context);
 void conn_params_init(uint16_t* conn_handle);
 
@@ -33,7 +33,7 @@ typedef void (*indicate_function_t)(void);
 void advertising_init(ble_uuid_t* adv_uuids, Adv_evt_handler_t adv_evt_handler, ble_advertising_t* advertising);
 void advertising_start(indicate_function_t indicate_function);
 void ble_stack_init();
-void ble_init(COMMAND_DEFINITION* command_definitions, size_t command_definitions_size, command_executor default_command_executor, application_context_t* application_context);
+void ble_init(command_definition_t* command_definitions, size_t command_definitions_size, command_executor default_command_executor, application_context_t* application_context);
 
 
 #endif /* BlE_UTILS_H__ */

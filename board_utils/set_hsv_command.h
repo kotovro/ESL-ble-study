@@ -3,7 +3,7 @@
 int set_hsv_executor(char* args, application_context_t* context, uint8_t* data, uint8_t data_len)
 {
     static char msg[100];
-    COLOR_HSV color = 
+    color_hsv_t color = 
     {
         .h = 0,
         .s = 0,
@@ -64,9 +64,29 @@ int set_hsv_executor(char* args, application_context_t* context, uint8_t* data, 
     if (is_args_valid)
     {
         context->current_color_description->colorType = 1; // HSV
-        context->current_color_description->first_component = color.h;
-        context->current_color_description->second_component = color.s;
-        context->current_color_description->third_component = color.v;
+        context->current_color_description->hsv = color;
+        ///for power off 
+        // if ((context->current_color_description->first_component == 0) 
+        //     && (context->current_color_description->second_component == 0) 
+        //     && (context->current_color_description->third_component == 0) 
+        //     && (*context->led_power_mode == LED_ON))
+        //     {
+        //         *context->led_power_mode = !(*context->led_power_mode);
+        //         *context->mode_global = POWER_OFF;
+        //     }
+        
+        // NRF_LOG_INFO("Cuurent mode is: %d", *context->led_power_mode);
+        // if (((context->current_color_description->first_component != 0) 
+        //     || (context->current_color_description->second_component != 0) 
+        //     || (context->current_color_description->third_component != 0)) 
+        //     && (*context->led_power_mode == LED_OFF))
+        //     {
+        //         *context->led_power_mode = !(*context->led_power_mode);
+        //         *context->mode_global = SLEEP;
+        //          NRF_LOG_INFO("Cuurent mode is: %d", *context->led_power_mode);
+        //          NRF_LOG_INFO("Current glbal mode: %d", *context->mode_global);
+        //     }
+        
         show_color(context->current_color_description);
         
         if (is_binary_arg) {
@@ -93,7 +113,7 @@ int set_hsv_executor(char* args, application_context_t* context, uint8_t* data, 
 }
 
 
-COMMAND_DEFINITION set_hsv_command  = 
+command_definition_t set_hsv_command  = 
 {
         .command_type = CMD_SET_HSV,
         .name = "HSV",

@@ -4,9 +4,7 @@
 
 int save_settings(char* args, application_context_t* context, uint8_t* data, uint8_t data_len)
 {
-    context->settings->saved_color.h = context->current_color_description->first_component;
-    context->settings->saved_color.s = (uint8_t)context->current_color_description->second_component;
-    context->settings->saved_color.v = (uint8_t)context->current_color_description->third_component;
+    context->settings->saved_color = context->current_color_description->hsv;
     context->settings->led_mode = *context->led_power_mode;
     NRF_LOG_INFO("Current led mode: %d", context->settings->led_mode);
     nvram_save_settings((uint32_t*)context->settings, sizeof(*(context->settings)));
@@ -26,7 +24,7 @@ int save_settings(char* args, application_context_t* context, uint8_t* data, uin
 }
 
 
-COMMAND_DEFINITION save_settings_command =
+command_definition_t save_settings_command =
 {
         .command_type = CMD_SAVE_SETTINGS,
         .name = "SAVE",

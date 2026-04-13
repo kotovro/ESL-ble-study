@@ -14,7 +14,7 @@
 #include "app_timer.h"
 #include "nrfx_clock.h"
 
-#define CURRENT_VERSION ((uint32_t)9)
+#define CURRENT_VERSION ((uint32_t)10)
 #define AVAILABLE_COMMANDS_SLOTS 9
 #define AVAILABLE_COLOR_SLOTS 10
 
@@ -58,32 +58,35 @@
 
 
 typedef struct {
-    // 0 - RGB
-    // 1 - HSV
-    // 255 - Unknown
-    char colorType; 
-    char colorName[11];
-    uint16_t first_component;
-    uint8_t second_component;
-    uint8_t third_component;
-} COLOR_DESCRIPTION;
-
-typedef struct {
     uint16_t h;
     uint8_t s;
     uint8_t v;
-} COLOR_HSV;
+} color_hsv_t;
 
 typedef struct {
     uint16_t r;
     uint16_t g;
     uint16_t b;
-} COLOR_RGB;
+} color_rgb_t;
+
+
+typedef struct {
+    // 0 - RGB
+    // 1 - HSV
+    // 255 - Unknown
+    char colorType; 
+    char colorName[11];
+    union {
+        color_rgb_t rgb;
+        color_hsv_t hsv;
+    };
+} COLOR_DESCRIPTION;
+
 
 typedef struct {
     uint32_t version;
     uint32_t led_mode;
-    COLOR_HSV saved_color;
+    color_hsv_t saved_color;
     COLOR_DESCRIPTION color_palette[AVAILABLE_COLOR_SLOTS]; 
 } SETTINGS;
 

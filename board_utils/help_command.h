@@ -7,7 +7,7 @@ int print_help_message(char* args, application_context_t* context, uint8_t* data
     msg[0] = '\0';
 
     strncat(msg, "Supported commands:\r\n", sizeof(msg) - strlen(msg) - 1);
-    for (size_t i = 0; i < sizeof(command_definitions) / sizeof(COMMAND_DEFINITION); i++)
+    for (size_t i = 0; i < sizeof(command_definitions) / sizeof(command_definition_t); i++)
     {
         if(command_definitions[i].command_type != CMD_UNKNOWN) 
         {
@@ -20,7 +20,7 @@ int print_help_message(char* args, application_context_t* context, uint8_t* data
     return 0;
 }
 
-COMMAND_DEFINITION help_command = 
+command_definition_t help_command = 
 {
     .command_type = CMD_HELP,
     .name = "HELP",

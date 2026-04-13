@@ -19,7 +19,7 @@
     
 
 typedef int  (*command_executor)(char*, application_context_t*, uint8_t*, uint8_t);
-typedef void (*Command_Finalizer)();
+typedef void (*Command_Finalizer)(void);
 
 typedef struct
 {
@@ -35,12 +35,12 @@ typedef struct
     char* name;
     char* description;
     Command_Finalizer finalizer;
-} COMMAND_DEFINITION;
+} command_definition_t;
 
 
 
 
-void init_usb_cli(COMMAND_DEFINITION* known_commands, size_t known_commands_size,
+void init_usb_cli(command_definition_t* known_commands, size_t known_commands_size,
                 command_executor default_command, application_context_t* application_context);
 void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
                            app_usbd_cdc_acm_user_event_t event);
