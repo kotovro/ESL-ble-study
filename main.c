@@ -103,7 +103,7 @@ NRF_BLE_QWR_DEF(m_qwr);
 BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
 
 
-void read_state_from_nvm()
+void read_state_from_nvm(void)
 {   
     if (settings.saved_color.h > 360 ||
         settings.saved_color.s > 100 ||
@@ -155,11 +155,6 @@ static void ble_timers_init(void)
     // Initialize timer module, making it use the scheduler
     ret_code_t err_code = app_timer_init(); ///
     APP_ERROR_CHECK(err_code);
-    // err_code = app_timer_create(&m_indication_timer_id, APP_TIMER_MODE_REPEATED, estc_indicate_update_on_timer);
-    // APP_ERROR_CHECK(err_code);
-
-    // err_code = app_timer_create(&m_notification_timer_id, APP_TIMER_MODE_REPEATED, estc_notify_update_on_timer);
-    APP_ERROR_CHECK(err_code);
 }
 
 static void log_init(void)
@@ -170,7 +165,7 @@ static void log_init(void)
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 }
 
-void fill_command_definitions()
+void fill_command_definitions(void)
 {
     init_command_definitions();
     command_definitions[0] = set_rgb_command;

@@ -33,6 +33,7 @@ NRF_BLE_GATT_DEF(m_gatt);                                                       
 NRF_BLE_QWR_DEF(m_qwr);         
 BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
 uint16_t* connection_handle;
+static ret_code_t result_of_init;
 
 static bool m_indication_pending = false;
 
@@ -65,14 +66,24 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
            
             break;
 
-        case BLE_GAP_EVT_DISCONNECTED:
-            NRF_LOG_INFO("Disconnected");
-            // bsp_board_led_off(CONNECTED_LED);
-            pattern_slow_blinking();
-            m_estc_service.connection_handle = BLE_CONN_HANDLE_INVALID;
-            advertising_start(pattern_slow_blinking);
-            
-            break;
+        case BLE_GAP_EVT_DISCONNECTED: /// Invalid state is cuae due automatic call of SDK handler https://devzone.nordicsemi.com/f/nordic-q-a/11294/s110---ble_advertising_on_ble_evt-always-starts-advertising-on-intentional-disconnect
+        {
+            ///current fix is not even a check, but full disablement of the SDK own handler
+            if (p_ble_evt->evt.gap_evt.params.disconnected.reason == BLE_HCI_LOCAL_HOST_TERMINATED_CONNECTION
+                || p_ble_evt->evt.gap_evt.params.disconnected.reason == BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION)
+                {
+                    NRF_LOG_INFO("Disconnect was intentional");
+                    // Start regular advertising (i.e. skip directed)
+                    advertising_start(pattern_slow_blinking);
+                }
+                else
+                {
+                    ble_advertising_on_ble_evt(p_ble_evt, &m_advertising);
+                }
+                NRF_LOG_INFO("Disconnected");
+                m_estc_service.connection_handle = BLE_CONN_HANDLE_INVALID;
+            }
+        break;
 
         case BLE_GATTS_EVT_WRITE:
         {
@@ -182,10 +193,10 @@ void ble_init(command_definition_t* command_definitions, size_t command_definiti
     ble_stack_init();
     gap_params_init();
     gatt_init(&m_gatt);
+    advertising_init(m_adv_uuids, on_adv_evt, &m_advertising);
     services_init(&m_qwr, &m_estc_service, command_definitions, command_definitions_size,
                 default_command_executor, application_context);
-    advertising_init(m_adv_uuids, on_adv_evt, &m_advertising);
-    conn_params_init(&m_estc_service.connection_handle);
+    conn_params_init();
 }
 
 /**@brief Function for initializing the BLE stack.
@@ -297,6 +308,7 @@ void advertising_init(ble_uuid_t* adv_uuids, Adv_evt_handler_t adv_evt_handler, 
 
     memset(&init, 0, sizeof(init));
 
+    
     init.advdata.name_type               = BLE_ADVDATA_NO_NAME;
     init.advdata.flags                   = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
 
@@ -307,6 +319,9 @@ void advertising_init(ble_uuid_t* adv_uuids, Adv_evt_handler_t adv_evt_handler, 
     init.srdata.name_type               = BLE_ADVDATA_FULL_NAME;
 
     init.config.ble_adv_fast_enabled  = true;
+    init.config.ble_adv_whitelist_enabled          = false;
+    init.config.ble_adv_directed_high_duty_enabled = false;
+
     init.config.ble_adv_fast_interval = APP_ADV_INTERVAL;
     init.config.ble_adv_fast_timeout  = APP_ADV_DURATION;
     
@@ -315,6 +330,7 @@ void advertising_init(ble_uuid_t* adv_uuids, Adv_evt_handler_t adv_evt_handler, 
     init.evt_handler = adv_evt_handler;
 
     err_code = ble_advertising_init(advertising, &init);
+    result_of_init = err_code;
     APP_ERROR_CHECK(err_code);
 
     ble_advertising_conn_cfg_tag_set(advertising, APP_BLE_CONN_CFG_TAG);
@@ -398,11 +414,10 @@ static void conn_params_error_handler(uint32_t nrf_error)
 
 /**@brief Function for initializing the Connection Parameters module.
  */
-void conn_params_init(uint16_t* conn_handle)
+void conn_params_init(void)
 {
     ret_code_t             err_code;
     ble_conn_params_init_t cp_init;
-    connection_handle  = conn_handle;
 
     memset(&cp_init, 0, sizeof(cp_init));
 
@@ -423,11 +438,13 @@ void conn_params_init(uint16_t* conn_handle)
  */
 void advertising_start(indicate_function_t indicate_function)
 {
+    NRF_LOG_INFO("The reuslt of ble init was: %d, and advertising start result: %d", result_of_init, m_advertising.initialized == true);
     ret_code_t           err_code;
-
+    ///maybe try initilize each time we start advertising
     err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
-    // err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG); - low-level call of gap
-    // APP_ERROR_CHECK(err_code); ///sometimes it;s safe just to ignore NRF_INALID_STATE in soft device, as forums suggest
+    NRF_LOG_INFO("The result of advert initialization: %d, check for true == false: %d", m_advertising.initialized == true, true == false);
+    // err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);// - low-level call of gap
+    APP_ERROR_CHECK(err_code); ///sometimes it;s safe just to ignore NRF_INALID_STATE in soft device, as forums suggest
     //for example, https://devzone.nordicsemi.com/f/nordic-q-a/14099/handling-nrf_error_invalid_state-error-code
     if (err_code != NRF_SUCCESS)
     {

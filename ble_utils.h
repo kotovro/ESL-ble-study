@@ -20,7 +20,7 @@ void sleep_mode_enter(void);
 void on_adv_evt(ble_adv_evt_t ble_adv_evt);
 void services_init(nrf_ble_qwr_t* qwr, ble_estc_service_t* estc_service, command_definition_t* known_commands, size_t known_commands_size,
                 command_executor default_command, application_context_t* application_context);
-void conn_params_init(uint16_t* conn_handle);
+void conn_params_init(void);
 
 typedef void (*Adv_evt_handler_t)(ble_adv_evt_t);
 typedef void (*indicate_function_t)(void);
