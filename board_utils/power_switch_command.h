@@ -15,14 +15,10 @@ int power_switch_executor(char* args, application_context_t* context, uint8_t* d
             *(context->mode_global) = POWER_OFF;
         }
         NRF_LOG_INFO("Current led mode is: %d", *context->led_power_mode);
-        *context->led_power_mode = !(*context->led_power_mode);
+        *context->led_power_mode = *(context->mode_global) != POWER_OFF;
         NRF_LOG_INFO("Now led mode is: %d", *context->led_power_mode);
         show_color(context->current_color_description);
     }
-    // if (!is_args_valid)
-    // {   
-        
-    // }
     return 0;
 }
 

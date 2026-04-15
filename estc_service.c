@@ -361,7 +361,7 @@ static ret_code_t estc_ble_add_led_power_state_characteristic(ble_estc_service_t
         service,
         ESTC_GATT_CHAR_LED_POWER_STATE_UUID,
         //permissions: read, write, notify, indicate
-        true, false,
+        true, true,
         true, true,
         m_application_context->led_power_mode, m_application_context->led_power_mode, sizeof(uint8_t),
         desc, sizeof(desc),
@@ -411,12 +411,12 @@ void estc_process_command(ble_estc_service_t *service, const ble_gatts_evt_write
     // APP_ERROR_CHECK(error_code);
 }
 
-// void estc_update_led_power_state_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write)
-// {
-//     NRF_LOG_INFO("We received data: %d", *write->data);
+void estc_update_led_power_state_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write)
+{
+    NRF_LOG_INFO("We received data: %d", *write->data);
 
-//     m_response_data.command[0] = CMD_POWER_SWITCH;
-//     m_response_data.command[1] = *write->data; 
-//     estc_process_command(service, write);
-// }
+    m_response_data.command[0] = CMD_POWER_SWITCH;
+    m_response_data.command[1] = *write->data; 
+    estc_process_command(service, write);
+}
 
