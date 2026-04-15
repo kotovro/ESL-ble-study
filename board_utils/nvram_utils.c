@@ -54,6 +54,7 @@ void update_record(fds_record_t record)
     fds_record_desc_t   record_desc;
     fds_find_token_t    ftok;
 
+    // fds_gc();
     /* It is required to zero the token before first use. */
     memset(&ftok, 0x00, sizeof(fds_find_token_t));
     ret_code_t find_result = fds_record_find(FILE_ID, record.key, &record_desc, &ftok);

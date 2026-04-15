@@ -361,7 +361,7 @@ static ret_code_t estc_ble_add_led_power_state_characteristic(ble_estc_service_t
         service,
         ESTC_GATT_CHAR_LED_POWER_STATE_UUID,
         //permissions: read, write, notify, indicate
-        true, true,
+        true, false,
         true, true,
         m_application_context->led_power_mode, m_application_context->led_power_mode, sizeof(uint8_t),
         desc, sizeof(desc),
