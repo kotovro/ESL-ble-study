@@ -64,7 +64,7 @@ void send_notification(uint16_t conn_handle, ble_gatts_char_handles_t* char_hand
 {
     if (m_service_instance->connection_handle == BLE_CONN_HANDLE_INVALID) return;
     NRF_LOG_INFO("Sending notification, data len: %d", data_len);
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < CHARACTERISTIC_COUNT; ++i)
     {
         if (m_ble_context->characteristics_subscription_status[i].characteristic_handle == char_handle)
         { 

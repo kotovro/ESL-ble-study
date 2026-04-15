@@ -104,7 +104,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             }
             else 
             {
-                for (int i = 0; i < 3; ++i) ///replace with CHARACTERISTIC_COUNT
+                for (int i = 0; i < CHARACTERISTIC_COUNT; ++i) ///replace with CHARACTERISTIC_COUNT
                 {
                     if (write->handle == m_ble_context.characteristics_subscription_status[i].characteristic_handle->cccd_handle)
                     {

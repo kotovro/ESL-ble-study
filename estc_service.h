@@ -50,6 +50,7 @@
 #define ESTC_GATT_CHAR_COMMAND_UUID  0x5cd9
 
 
+#define CHARACTERISTIC_COUNT 3
 
 
 typedef struct
