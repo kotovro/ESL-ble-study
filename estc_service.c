@@ -411,12 +411,12 @@ void estc_process_command(ble_estc_service_t *service, const ble_gatts_evt_write
     // APP_ERROR_CHECK(error_code);
 }
 
-void estc_update_led_power_state_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write)
-{
-    NRF_LOG_INFO("We received data: %d", *write->data);
+// void estc_update_led_power_state_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write)
+// {
+//     NRF_LOG_INFO("We received data: %d", *write->data);
 
-    m_response_data.command[0] = CMD_POWER_SWITCH;
-    m_response_data.command[1] = *write->data; 
-    estc_process_command(service, write);
-}
+//     m_response_data.command[0] = CMD_POWER_SWITCH;
+//     m_response_data.command[1] = *write->data; 
+//     estc_process_command(service, write);
+// }
 

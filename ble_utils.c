@@ -97,12 +97,12 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                 NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->data);
                 
             }
-            else if (write->handle == m_estc_service.led_power_state_characteristic_handle.value_handle)
-            {
-                //fds_gc();
-                NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->data);
-                estc_update_led_power_state_characteristic_value(&m_estc_service, write);
-            }
+            // else if (write->handle == m_estc_service.led_power_state_characteristic_handle.value_handle)
+            // {
+            //     //fds_gc();
+            //     NRF_LOG_INFO("Received write event for characteristic with notification, value: %u", write->data);
+            //     estc_update_led_power_state_characteristic_value(&m_estc_service, write);
+            // }
             else 
             {
                 for (int i = 0; i < 3; ++i) ///replace with CHARACTERISTIC_COUNT

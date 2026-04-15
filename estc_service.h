@@ -86,6 +86,7 @@ void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
 
 void estc_process_command(ble_estc_service_t *service, const ble_gatts_evt_write_t *write);
 
-void estc_update_led_power_state_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write); 
+//in current paradigm it's redundant
+// void estc_update_led_power_state_characteristic_value(ble_estc_service_t *service, const ble_gatts_evt_write_t *write); 
 
 #endif /* ESTC_SERVICE_H__ */
