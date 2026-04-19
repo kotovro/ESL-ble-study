@@ -54,7 +54,6 @@ void update_record(fds_record_t record)
     fds_record_desc_t   record_desc;
     fds_find_token_t    ftok;
 
-    fds_gc();
     /* It is required to zero the token before first use. */
     memset(&ftok, 0x00, sizeof(fds_find_token_t));
     ret_code_t find_result = fds_record_find(FILE_ID, record.key, &record_desc, &ftok);
@@ -138,6 +137,10 @@ void nvram_load_settings(uint32_t* settings, size_t settings_size)
    read_record(RECORD_KEY_SETTINGS, settings, settings_size);   
 }
 
+void run_garbage_collection(void)
+{
+    fds_gc();
+}
 
 
 

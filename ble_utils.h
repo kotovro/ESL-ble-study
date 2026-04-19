@@ -11,6 +11,7 @@
 
 #include "estc_service.h"
 
+#define MAX_CONNECTIONS 1
 
 uint32_t send_notitification(uint16_t conn_handle, uint16_t char_value_handle, const uint8_t *data);
 uint32_t send_indication(uint16_t conn_handle, uint16_t char_value_handle, const uint8_t *data);
@@ -29,10 +30,9 @@ typedef void (*indicate_function_t)(void);
 
 
 
-
-void advertising_init(ble_uuid_t* adv_uuids, Adv_evt_handler_t adv_evt_handler, ble_advertising_t* advertising);
+void advertising_init(ble_uuid_t* adv_uuids, uint8_t total_uuid_cnt, Adv_evt_handler_t adv_evt_handler, ble_advertising_t* advertising);
 void advertising_start(indicate_function_t indicate_function);
-void ble_stack_init();
+void ble_stack_init(void);
 void ble_init(command_definition_t* command_definitions, size_t command_definitions_size, command_executor default_command_executor, application_context_t* application_context);
 
 

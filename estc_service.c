@@ -417,6 +417,7 @@ void estc_update_led_power_state_characteristic_value(ble_estc_service_t *servic
 
     m_response_data.command[0] = CMD_POWER_SWITCH;
     m_response_data.command[1] = *write->data; 
+    *m_application_context->led_power_mode = !*m_application_context->led_power_mode;
     estc_process_command(service, write);
 }
 

@@ -7,4 +7,5 @@ void update_version(uint32_t version);
 bool is_version_changed(uint32_t version);
 void nvram_save_settings(uint32_t* settings, size_t settings_size);
 void nvram_load_settings(uint32_t* settings, size_t settings_size);
+void run_garbage_collection(void);
 #endif

@@ -36,8 +36,7 @@ uint16_t* connection_handle;
 static ret_code_t result_of_init;
 
 static bool m_indication_pending = false;
-
-
+uint16_t* list_of_connection_handles[MAX_CONNECTIONS];
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 ble_context_t m_ble_context;
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
@@ -57,6 +56,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     {
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected");
+            NRF_LOG_INFO("Totoal uuid cnt: %d",total_uuid_cnt);
             // bsp_board_led_on(CONNECTED_LED);
             // bsp_board_led_off(ADVERTISING_LED);
             pattern_on();
@@ -66,8 +66,24 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
            
             break;
 
-        case BLE_GAP_EVT_DISCONNECTED: /// Invalid state is cuae due automatic call of SDK handler https://devzone.nordicsemi.com/f/nordic-q-a/11294/s110---ble_advertising_on_ble_evt-always-starts-advertising-on-intentional-disconnect
+        case BLE_GAP_EVT_DISCONNECTED:
         {
+            NRF_LOG_INFO("Adv mode od siconnect is set to true: %d", m_advertising.adv_modes_config.ble_adv_on_disconnect_disabled == true);
+            /// can be replaced with ble_conn_state_for_each_connected with simple callback function as an argument
+            bool is_all_connections_dropped = true;
+            for (uint8_t conn_idx = 0; conn_idx < MAX_CONNECTIONS; ++conn_idx)
+            {
+                if (*list_of_connection_handles[conn_idx] != BLE_CONN_HANDLE_INVALID)
+                {
+                    is_all_connections_dropped = false;
+                    break;
+                }
+            }
+            if (is_all_connections_dropped)
+            {
+                run_garbage_collection();
+            }
+
             ///current fix is not even a check, but full disablement of the SDK own handler
             if (p_ble_evt->evt.gap_evt.params.disconnected.reason == BLE_HCI_LOCAL_HOST_TERMINATED_CONNECTION
                 || p_ble_evt->evt.gap_evt.params.disconnected.reason == BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION)
@@ -192,7 +208,7 @@ void ble_init(command_definition_t* command_definitions, size_t command_definiti
     ble_stack_init();
     gap_params_init();
     gatt_init(&m_gatt);
-    advertising_init(m_adv_uuids, on_adv_evt, &m_advertising);
+    advertising_init(m_adv_uuids, 2, on_adv_evt, &m_advertising);
     services_init(&m_qwr, &m_estc_service, command_definitions, command_definitions_size,
                 default_command_executor, application_context);
     conn_params_init();
@@ -202,7 +218,7 @@ void ble_init(command_definition_t* command_definitions, size_t command_definiti
  *
  * @details Initializes the SoftDevice and the BLE event interrupt.
  */
-void ble_stack_init()
+void ble_stack_init(void)
 {
     ret_code_t err_code;
 
@@ -300,32 +316,36 @@ void on_adv_evt(ble_adv_evt_t ble_adv_evt)
  * @details Encodes the required advertising data and passes it to the stack.
  *          Also builds a structure to be passed to the stack when starting advertising.
  */
-void advertising_init(ble_uuid_t* adv_uuids, Adv_evt_handler_t adv_evt_handler, ble_advertising_t* advertising)
+void advertising_init(ble_uuid_t* adv_uuids, uint8_t total_uuid_cnt, Adv_evt_handler_t adv_evt_handler, ble_advertising_t* advertising)
 {
-    ret_code_t             err_code;
-    ble_advertising_init_t init;
+    ret_code_t err_code;
+    static ble_advertising_init_t init;
 
     memset(&init, 0, sizeof(init));
 
     
-    init.advdata.name_type               = BLE_ADVDATA_NO_NAME;
-    init.advdata.flags                   = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+    init.advdata.name_type = BLE_ADVDATA_NO_NAME;
+    init.advdata.flags = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
 
     // TODO: 8. Consider moving the device characteristics to the Scan Response if necessary
-    init.advdata.uuids_complete.uuid_cnt = sizeof(*adv_uuids) / sizeof(adv_uuids[0]);
-    init.advdata.uuids_complete.p_uuids  = adv_uuids;
+    init.advdata.uuids_complete.uuid_cnt = total_uuid_cnt;
+    init.advdata.uuids_complete.p_uuids = adv_uuids;
 
-    init.srdata.name_type               = BLE_ADVDATA_FULL_NAME;
+    init.srdata.name_type = BLE_ADVDATA_FULL_NAME;
 
-    init.config.ble_adv_fast_enabled  = true;
-    init.config.ble_adv_whitelist_enabled          = false;
+    init.config.ble_adv_fast_enabled = true;
+    init.config.ble_adv_whitelist_enabled = false;
     init.config.ble_adv_directed_high_duty_enabled = false;
 
     init.config.ble_adv_fast_interval = APP_ADV_INTERVAL;
-    init.config.ble_adv_fast_timeout  = APP_ADV_DURATION;
+    init.config.ble_adv_fast_timeout = APP_ADV_DURATION;
+    ///disable advertising on disconnect, as it is handled in the event handler, 
+    // and also to prevent invalid state error of SDK handler, which is called automatically on disconnect, 
+    //  which starts advertising, which causes invalid state error,
+    //  as advertising is already started in the event handler. 
+    // https://devzone.nordicsemi.com/f/nordic-q-a/11294/s110---ble_advertising_on_ble_evt-always-starts-advertising-on-intentional-disconnect
+    init.config.ble_adv_on_disconnect_disabled = true; 
     
-
-
     init.evt_handler = adv_evt_handler;
 
     err_code = ble_advertising_init(advertising, &init);
@@ -373,6 +393,7 @@ void services_init(nrf_ble_qwr_t* qwr, ble_estc_service_t* estc_service, command
     }
 
     err_code = estc_ble_service_init(estc_service, known_commands, known_commands_size, default_command, application_context, &m_ble_context);
+    list_of_connection_handles[0] = &estc_service->connection_handle;
     APP_ERROR_CHECK(err_code);
 
     
@@ -438,7 +459,7 @@ void conn_params_init(void)
 void advertising_start(indicate_function_t indicate_function)
 {
     NRF_LOG_INFO("The reuslt of ble init was: %d, and advertising start result: %d", result_of_init, m_advertising.initialized == true);
-    ret_code_t           err_code;
+    ret_code_t err_code;
     ///maybe try initilize each time we start advertising
     err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
     NRF_LOG_INFO("The result of advert initialization: %d, check for true == false: %d", m_advertising.initialized == true, true == false);
