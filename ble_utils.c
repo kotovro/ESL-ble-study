@@ -29,9 +29,9 @@
 #include "cli_utils.h" 
 #include "board_utils.h"
 
-NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
-NRF_BLE_QWR_DEF(m_qwr);         
-BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
+
+static ble_advertising_t m_advertising;   
+// BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
 uint16_t* connection_handle;
 static ret_code_t result_of_init;
 
@@ -44,6 +44,12 @@ static ble_uuid_t m_adv_uuids[] =                                               
     {BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE},
     {ESTC_SERVICE_UUID, BLE_UUID_TYPE_BLE},
 };
+
+
+NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
+NRF_BLE_QWR_DEF(m_qwr);         
+
+
 /**@brief Function for handling BLE events.
  *
  * @param[in]   p_ble_evt   Bluetooth stack event.
@@ -56,7 +62,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     {
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected");
-            NRF_LOG_INFO("Totoal uuid cnt: %d",total_uuid_cnt);
+            NRF_LOG_INFO("addres of m_adverts: %d", &m_advertising);
+            
             // bsp_board_led_on(CONNECTED_LED);
             // bsp_board_led_off(ADVERTISING_LED);
             pattern_on();
@@ -236,7 +243,7 @@ void ble_stack_init(void)
     APP_ERROR_CHECK(err_code);
 
     // Register a handler for BLE events.
-    NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
+    NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, &m_advertising);
 }
 
 /**@brief Function for the GAP initialization.

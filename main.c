@@ -98,11 +98,6 @@ SETTINGS settings = { 0, LED_ON, {22, 100, 100}  };
 application_context_t application_context = {&mode_global, &led_power_mode, color_palette, &color_description, &settings, &hue_d, &saturation_d, &value_d};
 
 
-NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
-NRF_BLE_QWR_DEF(m_qwr);         
-BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
-
-
 void read_state_from_nvm(void)
 {   
     if (settings.saved_color.h > 360 ||
