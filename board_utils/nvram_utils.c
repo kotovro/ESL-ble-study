@@ -57,14 +57,28 @@ void update_record(fds_record_t record)
     /* It is required to zero the token before first use. */
     memset(&ftok, 0x00, sizeof(fds_find_token_t));
     ret_code_t find_result = fds_record_find(FILE_ID, record.key, &record_desc, &ftok);
+    ret_code_t write_result = NRF_SUCCESS;
     if (find_result == NRF_SUCCESS)
     {
         NRF_LOG_INFO("Entry found");
-        fds_record_update(&record_desc, &record);
+        write_result = fds_record_update(&record_desc, &record);
     } else
     {
         NRF_LOG_INFO("Entry wasnt't found, code: %d, while FDS_ERR_NO_SPACE_IN_FLASH code is: %d", find_result, FDS_ERR_NO_SPACE_IN_FLASH);
-        fds_record_write(&record_desc, &record);
+        write_result = fds_record_write(&record_desc, &record);
+    }
+    if (write_result == FDS_ERR_NO_SPACE_IN_FLASH)
+    {
+        run_garbage_collection();
+        if (find_result == NRF_SUCCESS) 
+        {
+            write_result = fds_record_update(&record_desc, &record);
+        }
+        else
+        {
+            write_result = fds_record_write(&record_desc, &record);
+        }
+        APP_ERROR_CHECK(write_result);
     }
 }
 

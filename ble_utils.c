@@ -31,7 +31,6 @@
 
 
 static ble_advertising_t m_advertising;   
-// BLE_ADVERTISING_DEF(m_advertising);                                                   /**< Context for the Queued Write module.*/
 uint16_t* connection_handle;
 static ret_code_t result_of_init;
 
@@ -423,7 +422,7 @@ static void on_conn_params_evt(ble_conn_params_evt_t * p_evt)
 
     if (p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED)
     {
-        err_code = sd_ble_gap_disconnect(*connection_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
+        err_code = sd_ble_gap_disconnect(m_estc_service.connection_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
         APP_ERROR_CHECK(err_code);
     }
 }
